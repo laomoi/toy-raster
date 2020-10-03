@@ -2,28 +2,20 @@ var gl
 var shaderProgram
 var u_Sampler
 var canvasTexture
-var pixels
 var vertexsBuffer
-var canvasWidth = 1024
-var canvasHeight = 768
+
+var rasterInstance = null
 
 function initTexture() {
     canvasTexture = gl.createTexture();
-    var sTextureSize = canvasWidth * canvasHeight * 4;    // r, g, b, a
-    pixels = new Uint8Array( sTextureSize );
-    for( var i=0 ; i<sTextureSize ; i+=4 )
-    {
-        pixels[i] = pixels[i+1] = pixels[i+2] = i / sTextureSize *255;
-        pixels[i+3] = 255;
-    }
+    
     gl.bindTexture(gl.TEXTURE_2D, canvasTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasWidth, canvasHeight, 0,
-        gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.bindTexture(gl.TEXTURE_2D, null);
+
 }
 
 function initShader() {
@@ -101,7 +93,6 @@ function initGeometry() {
 
 
 function renderCanvas() {
-    updateTexture()
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.useProgram(shaderProgram);
     gl.uniform1i(u_Sampler, 0);
@@ -110,23 +101,11 @@ function renderCanvas() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-function renderLoop() {
-    renderCanvas();
-    requestAnimationFrame(renderLoop);
-	//window.setTimeout(renderLoop, 1000 / 30);
-}
 
-function updateTexture(){
-    gl.bindTexture(gl.TEXTURE_2D, canvasTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasWidth, canvasHeight, 0,
-        gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-}
 
 window.onload = function () {
     var canvas = document.getElementById('canvas');
-    canvasWidth = canvas.width
-    canvasHeight = canvasHeight
+
     gl = canvas.getContext('webgl');
     if (!gl) {
         console.log("WEBGL FAILED");
@@ -136,5 +115,18 @@ window.onload = function () {
     initShader();
     initTexture();
     initGeometry();
-    renderLoop();
+
+    //start the raster instance
+    rasterInstance = new Raster(canvas.width, canvas.height, printPixels)
+}
+
+
+function printPixels(width, height, pixels) {
+    //upload pixels
+    gl.bindTexture(gl.TEXTURE_2D, canvasTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0,
+        gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    renderCanvas();
 }

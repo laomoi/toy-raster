@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "module": "commonjs",
+      "noImplicitAny": true,
+      "removeComments": true,
+      "sourceMap": true,
+      "outDir": "./js"
+    },
+
+    "exclude": [
+      "node_modules",
+      "js"
+    ]
+
+}

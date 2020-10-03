@@ -1,0 +1,1 @@
+node .\node_modules\tsc\bin\tsc.js -w

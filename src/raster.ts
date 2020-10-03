@@ -125,7 +125,8 @@ class Matrix {
     }
 
     public static setLookAt(dst:Matrix, eye:Vector, up:Vector, at:Vector) {
-        //w is reverse of look at direction, wuv is the axises of the camera
+        //w is reverse of look at direction, wuv is the axises of the camera, 
+        //The equation is from <fundamentals of CG> 4th. 7.1
         let w = at.sub(eye).normalize().reverse()
         let u = up.cross(w).normalize()
         let v = w.cross(u)
@@ -207,13 +208,11 @@ class Device {
 
 
 export default class Raster {
-    
     protected bitBlit:any = null
     protected device:Device = null
     constructor(canvasWidth:number, canvasHeight:number, printCallback:any) {
         this.bitBlit = printCallback
         this.device = new Device(canvasWidth, canvasHeight)
-
 
         let self = this
         let wrapMainLoop = function() {
@@ -230,11 +229,7 @@ export default class Raster {
         this.bitBlit(this.device.width, this.device.height, this.device.frameBuffer)
     }
 
-
-
     public setModel() {
 
     }
-
-
 }

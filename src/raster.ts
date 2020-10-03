@@ -125,7 +125,7 @@ class Matrix {
     }
 
     public static setLookAt(dst:Matrix, eye:Vector, up:Vector, at:Vector) {
-        //w is reverse of look at direction
+        //w is reverse of look at direction, wuv is the axises of the camera
         let w = at.sub(eye).normalize().reverse()
         let u = up.cross(w).normalize()
         let v = w.cross(u)

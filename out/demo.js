@@ -4,7 +4,7 @@ var u_Sampler
 var canvasTexture
 var vertexsBuffer
 
-var rasterInstance = null
+var appInstance = null
 
 function initTexture() {
     canvasTexture = gl.createTexture();
@@ -117,11 +117,11 @@ window.onload = function () {
     initGeometry();
 
     //start the raster instance
-    rasterInstance = new Raster(canvas.width, canvas.height, printPixels)
+    appInstance = new App(canvas.width, canvas.height, blitPixels)
 }
 
 
-function printPixels(width, height, pixels) {
+function blitPixels(width, height, pixels) {
     //upload pixels
     gl.bindTexture(gl.TEXTURE_2D, canvasTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0,

@@ -171,22 +171,50 @@ class MathUtils {
     }
 }
 
-class Device {
+
+class Color {
+    public r:number
+    public g:number
+    public b:number
+    public a:number
+    constructor(r:number, g:number, b:number, a:number) {
+        this.a = a
+        this.r = r
+        this.g = g
+        this.b = b
+    }
+    public static BLACK:Color = new Color(0, 0, 0, 255)
+    public static WHITE:Color = new Color(255, 255, 255, 255)
+
+}
+
+
+
+class Renderer {
+    protected bitBlit:any = null
     public width:number 
     public height:number
     public frameBuffer:Uint8Array = null
     public zBuffer:Float32Array = null
-    constructor(width:number, height:number) {
+
+    public backgroundColor:Color = Color.BLACK
+
+    constructor(width:number, height:number, blitCallback:any) {
         this.width = width
         this.height = height
+        this.bitBlit = blitCallback
+
         this.frameBuffer = new Uint8Array(width*height*4)
         this.zBuffer = new Float32Array(width*height)
-     
     }
 
+ 
     public clear() {
-        for (let l=0;l<this.frameBuffer.length;l++){
-            this.frameBuffer[l] = 0
+        for (let l=0;l<this.frameBuffer.length;l+=4){
+            this.frameBuffer[l] = this.backgroundColor.r
+            this.frameBuffer[l+1] = this.backgroundColor.g
+            this.frameBuffer[l+2] = this.backgroundColor.b
+            this.frameBuffer[l+3] = this.backgroundColor.a
         }
         for (let l=0;l<this.zBuffer.length;l++){
             this.zBuffer[l] = NaN
@@ -202,18 +230,88 @@ class Device {
             this.frameBuffer[i+3] = 255
         }
     }
+
+    public drawLine(x0:number, y0:number, x1:number, y1:number, color:Color){
+        if (x0 == x1) {
+            let dir = y0 < y1 ? 1 : -1
+            for (let y=y0; y!=y1; y+=dir) {
+                this.setPixel(x0, y, color)
+            }
+            this.setPixel(x1, y1, color)
+        } else if (y0 == y1) {
+            let dir = x0 < x1 ? 1 : -1
+            for (let x=x0; x!=x1; x+=dir) {
+                this.setPixel(x, y0, color)
+            }
+            this.setPixel(x1, y1, color)
+        } else {
+            //use mid-point algorithm to draw line, <CG> 4th, Setion 8.1
+            let dx = Math.abs(x1 - x0)
+            let dy = Math.abs(y1 - y0)
+            if (dx > dy) {
+                //horizontal line
+                if (x0 > x1) {
+                    let tx = x0, ty = y0
+                    x0 = x1, y0 = y1
+                    x1 = tx, y1 = ty
+                }
+                let dir = y1 > y0 ? 1: -1
+                let y = y0
+                let d = (y0-y1)*(x0+1) + (x1-x0)*(y0+0.5*dir) + x0*y1 - x1*y0
+                for (let x=x0;x<=x1;x++) {
+                    this.setPixel(x, y, color)
+                    if (d*dir < 0){
+                        y += dir
+                        d += (x1-x0)*dir + (y0-y1)
+                    } else {
+                        d += y0 - y1
+                    }
+                }
+            } else {
+                //vertical line
+                if (y0 > y1) {
+                    let tx = x0, ty = y0
+                    x0 = x1, y0 = y1
+                    x1 = tx, y1 = ty
+                }
+                let dir = x1 > x0 ? 1: -1
+                let x = x0
+                let d = (y0-y1)*(x0+0.5*dir) + (x1-x0)*(y0+1) + x0*y1 - x1*y0
+                for (let y=y0;y<=y1;y++) {
+                    this.setPixel(x, y, color)
+                    if (d*dir > 0){
+                        x += dir
+                        d += (x1-x0)+ (y0-y1)*dir 
+                    } else {
+                        d += x1 - x0
+                    }
+                }
+            }
+        }
+    }
+
+    public setPixel(x:number, y:number, color:Color) {
+        if (x < this.width && y < this.height && x>=0 && y>=0) {
+            let pstart = (this.width*y + x)*4
+            this.frameBuffer[pstart] = color.r
+            this.frameBuffer[pstart+1] = color.g
+            this.frameBuffer[pstart+2] = color.b
+            this.frameBuffer[pstart+3] = color.a
+        }
+    }
+
+    public flush() {
+        this.bitBlit(this.width, this.height, this.frameBuffer)
+    }
 }
 
 
-
-
-export default class Raster {
+export default class App {
     protected bitBlit:any = null
-    protected device:Device = null
-    constructor(canvasWidth:number, canvasHeight:number, printCallback:any) {
-        this.bitBlit = printCallback
-        this.device = new Device(canvasWidth, canvasHeight)
-
+    protected renderder:Renderer
+    constructor(canvasWidth:number, canvasHeight:number, blitCallback:any) {
+        this.renderder = new Renderer(canvasWidth, canvasHeight, blitCallback)
+        
         let self = this
         let wrapMainLoop = function() {
             self.mainLoop()
@@ -223,13 +321,19 @@ export default class Raster {
     }
 
     protected mainLoop() {
-        this.device.clear()
-        this.device.drawBox()
+        this.renderder.clear()
+        // this.renderder.drawBox()
+        // this.renderder.drawLine(100,200, 300, 200, Color.WHITE)
+        this.renderder.drawLine(200,300, 2000, 300, Color.WHITE)
+        this.renderder.drawLine(200,300, 900, 200, Color.WHITE)
+        this.renderder.drawLine(200,300, 900, 500, Color.WHITE)
+        this.renderder.drawLine(200,300, 150, 700, Color.WHITE)
+        this.renderder.drawLine(200,300, 450, 700, Color.WHITE)
+        this.renderder.drawLine(200,300, 150, 100, Color.WHITE)
 
-        this.bitBlit(this.device.width, this.device.height, this.device.frameBuffer)
+        // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
+
+        this.renderder.flush()
     }
 
-    public setModel() {
-
-    }
 }

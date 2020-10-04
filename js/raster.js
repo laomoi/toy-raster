@@ -156,24 +156,41 @@ var MathUtils = (function () {
     };
     return MathUtils;
 })();
-var Device = (function () {
-    function Device(width, height) {
+var Color = (function () {
+    function Color(r, g, b, a) {
+        this.a = a;
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
+    Color.BLACK = new Color(0, 0, 0, 255);
+    Color.WHITE = new Color(255, 255, 255, 255);
+    return Color;
+})();
+var Renderer = (function () {
+    function Renderer(width, height, blitCallback) {
+        this.bitBlit = null;
         this.frameBuffer = null;
         this.zBuffer = null;
+        this.backgroundColor = Color.BLACK;
         this.width = width;
         this.height = height;
+        this.bitBlit = blitCallback;
         this.frameBuffer = new Uint8Array(width * height * 4);
         this.zBuffer = new Float32Array(width * height);
     }
-    Device.prototype.clear = function () {
-        for (var l = 0; l < this.frameBuffer.length; l++) {
-            this.frameBuffer[l] = 0;
+    Renderer.prototype.clear = function () {
+        for (var l = 0; l < this.frameBuffer.length; l += 4) {
+            this.frameBuffer[l] = this.backgroundColor.r;
+            this.frameBuffer[l + 1] = this.backgroundColor.g;
+            this.frameBuffer[l + 2] = this.backgroundColor.b;
+            this.frameBuffer[l + 3] = this.backgroundColor.a;
         }
         for (var l = 0; l < this.zBuffer.length; l++) {
             this.zBuffer[l] = NaN;
         }
     };
-    Device.prototype.drawBox = function () {
+    Renderer.prototype.drawBox = function () {
         var pixelsSize = this.width * this.height * 4;
         for (var i = 0; i < pixelsSize; i += 4) {
             this.frameBuffer[i] = 255;
@@ -182,14 +199,84 @@ var Device = (function () {
             this.frameBuffer[i + 3] = 255;
         }
     };
-    return Device;
+    Renderer.prototype.drawLine = function (x0, y0, x1, y1, color) {
+        if (x0 == x1) {
+            var dir = y0 < y1 ? 1 : -1;
+            for (var y = y0; y != y1; y += dir) {
+                this.setPixel(x0, y, color);
+            }
+            this.setPixel(x1, y1, color);
+        }
+        else if (y0 == y1) {
+            var dir = x0 < x1 ? 1 : -1;
+            for (var x = x0; x != x1; x += dir) {
+                this.setPixel(x, y0, color);
+            }
+            this.setPixel(x1, y1, color);
+        }
+        else {
+            var dx = Math.abs(x1 - x0);
+            var dy = Math.abs(y1 - y0);
+            if (dx > dy) {
+                if (x0 > x1) {
+                    var tx = x0, ty = y0;
+                    x0 = x1, y0 = y1;
+                    x1 = tx, y1 = ty;
+                }
+                var dir = y1 > y0 ? 1 : -1;
+                var y = y0;
+                var d = (y0 - y1) * (x0 + 1) + (x1 - x0) * (y0 + 0.5 * dir) + x0 * y1 - x1 * y0;
+                for (var x = x0; x <= x1; x++) {
+                    this.setPixel(x, y, color);
+                    if (d * dir < 0) {
+                        y += dir;
+                        d += (x1 - x0) * dir + (y0 - y1);
+                    }
+                    else {
+                        d += y0 - y1;
+                    }
+                }
+            }
+            else {
+                if (y0 > y1) {
+                    var tx = x0, ty = y0;
+                    x0 = x1, y0 = y1;
+                    x1 = tx, y1 = ty;
+                }
+                var dir = x1 > x0 ? 1 : -1;
+                var x = x0;
+                var d = (y0 - y1) * (x0 + 0.5 * dir) + (x1 - x0) * (y0 + 1) + x0 * y1 - x1 * y0;
+                for (var y = y0; y <= y1; y++) {
+                    this.setPixel(x, y, color);
+                    if (d * dir > 0) {
+                        x += dir;
+                        d += (x1 - x0) + (y0 - y1) * dir;
+                    }
+                    else {
+                        d += x1 - x0;
+                    }
+                }
+            }
+        }
+    };
+    Renderer.prototype.setPixel = function (x, y, color) {
+        if (x < this.width && y < this.height && x >= 0 && y >= 0) {
+            var pstart = (this.width * y + x) * 4;
+            this.frameBuffer[pstart] = color.r;
+            this.frameBuffer[pstart + 1] = color.g;
+            this.frameBuffer[pstart + 2] = color.b;
+            this.frameBuffer[pstart + 3] = color.a;
+        }
+    };
+    Renderer.prototype.flush = function () {
+        this.bitBlit(this.width, this.height, this.frameBuffer);
+    };
+    return Renderer;
 })();
-var Raster = (function () {
-    function Raster(canvasWidth, canvasHeight, printCallback) {
+var App = (function () {
+    function App(canvasWidth, canvasHeight, blitCallback) {
         this.bitBlit = null;
-        this.device = null;
-        this.bitBlit = printCallback;
-        this.device = new Device(canvasWidth, canvasHeight);
+        this.renderder = new Renderer(canvasWidth, canvasHeight, blitCallback);
         var self = this;
         var wrapMainLoop = function () {
             self.mainLoop();
@@ -197,14 +284,17 @@ var Raster = (function () {
         };
         wrapMainLoop();
     }
-    Raster.prototype.mainLoop = function () {
-        this.device.clear();
-        this.device.drawBox();
-        this.bitBlit(this.device.width, this.device.height, this.device.frameBuffer);
+    App.prototype.mainLoop = function () {
+        this.renderder.clear();
+        this.renderder.drawLine(200, 300, 2000, 300, Color.WHITE);
+        this.renderder.drawLine(200, 300, 900, 200, Color.WHITE);
+        this.renderder.drawLine(200, 300, 900, 500, Color.WHITE);
+        this.renderder.drawLine(200, 300, 150, 700, Color.WHITE);
+        this.renderder.drawLine(200, 300, 450, 700, Color.WHITE);
+        this.renderder.drawLine(200, 300, 150, 100, Color.WHITE);
+        this.renderder.flush();
     };
-    Raster.prototype.setModel = function () {
-    };
-    return Raster;
+    return App;
 })();
-exports["default"] = Raster;
+exports["default"] = App;
 //# sourceMappingURL=raster.js.map

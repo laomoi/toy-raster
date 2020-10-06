@@ -185,10 +185,23 @@ class Color {
     }
     public static BLACK:Color = new Color(0, 0, 0, 255)
     public static WHITE:Color = new Color(255, 255, 255, 255)
+    public static RED:Color = new Color(255, 0, 0, 255)
+    public static BLUE:Color = new Color(0, 0, 255, 255)
+    public static GREEN:Color = new Color(0, 255, 0, 255)
 
+    public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {
+        dstColor.r = color1.r*a + color2.r*b + color3.r*c
+        dstColor.g = color1.g*a + color2.g*b + color3.g*c
+        dstColor.b = color1.b*a + color2.b*b + color3.b*c
+        dstColor.a = color1.a*a + color2.a*b + color3.a*c
+    }
 }
 
-
+interface Vertex2D {
+    x:number,
+    y:number,
+    color:Color
+}
 
 class Renderer {
     protected bitBlit:any = null
@@ -231,6 +244,7 @@ class Renderer {
         }
     }
 
+
     public drawLine(x0:number, y0:number, x1:number, y1:number, color:Color){
         if (x0 == x1) {
             let dir = y0 < y1 ? 1 : -1
@@ -249,12 +263,13 @@ class Renderer {
             let dx = Math.abs(x1 - x0)
             let dy = Math.abs(y1 - y0)
             if (dx > dy) {
-                //horizontal line
+                //more horizontal line
                 if (x0 > x1) {
                     let tx = x0, ty = y0
                     x0 = x1, y0 = y1
                     x1 = tx, y1 = ty
                 }
+
                 let dir = y1 > y0 ? 1: -1
                 let y = y0
                 let d = (y0-y1)*(x0+1) + (x1-x0)*(y0+0.5*dir) + x0*y1 - x1*y0
@@ -268,7 +283,7 @@ class Renderer {
                     }
                 }
             } else {
-                //vertical line
+                //more vertical line
                 if (y0 > y1) {
                     let tx = x0, ty = y0
                     x0 = x1, y0 = y1
@@ -284,6 +299,47 @@ class Renderer {
                         d += (x1-x0)+ (y0-y1)*dir 
                     } else {
                         d += x1 - x0
+                    }
+                }
+            }
+        }
+    }
+
+    protected barycentricFunc(vs:Array<Vertex2D>, a:number, b:number, x:number, y:number):number{
+        return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
+    }
+    public drawTriangle(v0:Vertex2D, v1:Vertex2D, v2:Vertex2D) {
+        //use barycentric coordinates to check point inside triangle and the interpolation value
+        //use AABB for performance
+        //Edge drawing:
+        // use (x,y) = (-1,-1) to decide the pixel at the same side or not, if yes, 
+        //then the pixel on the edge is belongs the triangle
+        let x0 = v0.x, x1 =v1.x, x2 = v2.x, y0 = v0.x, y1=v1.y, y2=v2.y
+        let minX = Math.floor( Math.min(x0, x1, x2) )
+        let maxX = Math.ceil( Math.max(x0, x1, x2) )
+        let minY = Math.floor( Math.min(y0, y1, y2) )
+        let maxY = Math.ceil( Math.max(y0, y1, y2) )
+        let c:Color = new Color(255,255, 255, 255)
+        let vs = [v0, v1, v2]
+        let fBelta = this.barycentricFunc(vs, 2, 0, x1, y1)
+        let fGama = this.barycentricFunc(vs, 0, 1, x2, y2)
+        let fAlpha =  this.barycentricFunc(vs, 1, 2, x0, y0)
+        let offScreenPointX = -1, offScreenPointY = -1
+        for (let x=minX;x<=maxX;x++) {
+            for (let y=minY;y<=maxY;y++) {
+                //F(a,b, x,y) = (ya-yb)*x + (xb-xa)*y + xa*yb - xb*ya, 
+                //a,b is [0,1,2], belta= F(2,0,x,y) / F(2, 0, x1,y1)
+                let belta = this.barycentricFunc(vs, 2, 0, x, y) / fBelta
+                let gama = this.barycentricFunc(vs, 0, 1, x, y) / fGama
+                let alpha = 1 - belta - gama
+                if (alpha>=0 && belta >=0 && gama >=0) {
+                    if (  (alpha > 0 || fAlpha*this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) >0) 
+                    &&  (belta > 0 || fBelta*this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) >0) 
+                    &&  (gama > 0 || fGama*this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) >0) 
+                      ){
+                        //inside the triangle , and the edge belongs to the triangle
+                        Color.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
+                        this.setPixel(x, y, c)
                     }
                 }
             }
@@ -324,14 +380,18 @@ export default class App {
         this.renderder.clear()
         // this.renderder.drawBox()
         // this.renderder.drawLine(100,200, 300, 200, Color.WHITE)
-        this.renderder.drawLine(200,300, 2000, 300, Color.WHITE)
-        this.renderder.drawLine(200,300, 900, 200, Color.WHITE)
-        this.renderder.drawLine(200,300, 900, 500, Color.WHITE)
-        this.renderder.drawLine(200,300, 150, 700, Color.WHITE)
-        this.renderder.drawLine(200,300, 450, 700, Color.WHITE)
-        this.renderder.drawLine(200,300, 150, 100, Color.WHITE)
+        // this.renderder.drawLine(200,300, 2000, 300, Color.WHITE)
+        // this.renderder.drawLine(200,300, 900, 100, Color.WHITE)
+        // this.renderder.drawLine(200,300, 900, 500, Color.WHITE)
+        // this.renderder.drawLine(200,300, 150, 700, Color.WHITE)
+        // this.renderder.drawLine(200,300, 450, 700, Color.WHITE)
+        // this.renderder.drawLine(200,300, 150, 100, Color.WHITE)
 
         // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
+        // this.renderder.drawTriangle({x:100, y:100, color:Color.RED}, {x:200, y:100, color:Color.BLUE},{x:150, y:150, color:Color.GREEN})
+        
+        this.renderder.drawTriangle({x:100, y:200, color:Color.RED}, {x:200, y:250, color:Color.BLUE},{x:150, y:350, color:Color.GREEN})
+        this.renderder.drawTriangle({x:100, y:200, color:Color.GREEN}, {x:500, y:100, color:Color.BLUE}, {x:200, y:250, color:Color.RED})
 
         this.renderder.flush()
     }

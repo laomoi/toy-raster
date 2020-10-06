@@ -163,8 +163,17 @@ var Color = (function () {
         this.g = g;
         this.b = b;
     }
+    Color.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
+        dstColor.r = color1.r * a + color2.r * b + color3.r * c;
+        dstColor.g = color1.g * a + color2.g * b + color3.g * c;
+        dstColor.b = color1.b * a + color2.b * b + color3.b * c;
+        dstColor.a = color1.a * a + color2.a * b + color3.a * c;
+    };
     Color.BLACK = new Color(0, 0, 0, 255);
     Color.WHITE = new Color(255, 255, 255, 255);
+    Color.RED = new Color(255, 0, 0, 255);
+    Color.BLUE = new Color(0, 0, 255, 255);
+    Color.GREEN = new Color(0, 255, 0, 255);
     return Color;
 })();
 var Renderer = (function () {
@@ -259,6 +268,37 @@ var Renderer = (function () {
             }
         }
     };
+    Renderer.prototype.barycentricFunc = function (vs, a, b, x, y) {
+        return ((vs[a].y - vs[b].y) * x + (vs[b].x - vs[a].x) * y + vs[a].x * vs[b].y - vs[b].x * vs[a].y);
+    };
+    Renderer.prototype.drawTriangle = function (v0, v1, v2) {
+        var x0 = v0.x, x1 = v1.x, x2 = v2.x, y0 = v0.x, y1 = v1.y, y2 = v2.y;
+        var minX = Math.floor(Math.min(x0, x1, x2));
+        var maxX = Math.ceil(Math.max(x0, x1, x2));
+        var minY = Math.floor(Math.min(y0, y1, y2));
+        var maxY = Math.ceil(Math.max(y0, y1, y2));
+        var c = new Color(255, 255, 255, 255);
+        var vs = [v0, v1, v2];
+        var fBelta = this.barycentricFunc(vs, 2, 0, x1, y1);
+        var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
+        var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
+        var offScreenPointX = -1, offScreenPointY = -1;
+        for (var x = minX; x <= maxX; x++) {
+            for (var y = minY; y <= maxY; y++) {
+                var belta = this.barycentricFunc(vs, 2, 0, x, y) / fBelta;
+                var gama = this.barycentricFunc(vs, 0, 1, x, y) / fGama;
+                var alpha = 1 - belta - gama;
+                if (alpha >= 0 && belta >= 0 && gama >= 0) {
+                    if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
+                        && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
+                        && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
+                        Color.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c);
+                        this.setPixel(x, y, c);
+                    }
+                }
+            }
+        }
+    };
     Renderer.prototype.setPixel = function (x, y, color) {
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {
             var pstart = (this.width * y + x) * 4;
@@ -286,12 +326,8 @@ var App = (function () {
     }
     App.prototype.mainLoop = function () {
         this.renderder.clear();
-        this.renderder.drawLine(200, 300, 2000, 300, Color.WHITE);
-        this.renderder.drawLine(200, 300, 900, 200, Color.WHITE);
-        this.renderder.drawLine(200, 300, 900, 500, Color.WHITE);
-        this.renderder.drawLine(200, 300, 150, 700, Color.WHITE);
-        this.renderder.drawLine(200, 300, 450, 700, Color.WHITE);
-        this.renderder.drawLine(200, 300, 150, 100, Color.WHITE);
+        this.renderder.drawTriangle({ x: 100, y: 200, color: Color.RED }, { x: 200, y: 250, color: Color.BLUE }, { x: 150, y: 350, color: Color.GREEN });
+        this.renderder.drawTriangle({ x: 100, y: 200, color: Color.GREEN }, { x: 500, y: 100, color: Color.BLUE }, { x: 200, y: 250, color: Color.RED });
         this.renderder.flush();
     };
     return App;

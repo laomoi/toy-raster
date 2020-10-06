@@ -197,11 +197,20 @@ class Color {
     }
 }
 
-interface Vertex2D {
+interface UV {
+    u:number,
+    v:number,
+}
+
+interface Vertex {
     x:number,
     y:number,
-    color:Color
+    z?:number, //z is optional
+    color?:Color,//default White
+    uv?:UV,
 }
+
+
 
 class Renderer {
     protected bitBlit:any = null
@@ -231,16 +240,6 @@ class Renderer {
         }
         for (let l=0;l<this.zBuffer.length;l++){
             this.zBuffer[l] = NaN
-        }
-    }
-
-    public drawBox() {
-        let pixelsSize = this.width*this.height*4
-        for (let i=0;i<pixelsSize;i+=4) {
-            this.frameBuffer[i] = 255
-            this.frameBuffer[i+1] = i % 255
-            this.frameBuffer[i+2] = i % 255
-            this.frameBuffer[i+3] = 255
         }
     }
 
@@ -305,10 +304,11 @@ class Renderer {
         }
     }
 
-    protected barycentricFunc(vs:Array<Vertex2D>, a:number, b:number, x:number, y:number):number{
+    protected barycentricFunc(vs:Array<Vertex>, a:number, b:number, x:number, y:number):number{
         return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
     }
-    public drawTriangle(v0:Vertex2D, v1:Vertex2D, v2:Vertex2D) {
+
+    public drawTriangle(v0:Vertex, v1:Vertex, v2:Vertex) {
         //use barycentric coordinates to check point inside triangle and the interpolation value
         //use AABB for performance
         //Edge drawing:
@@ -356,6 +356,13 @@ class Renderer {
         }
     }
 
+    //va is array of vertex, elements is triangles using vertex index in va
+    public drawElements(va:Array<Vertex>, elements:Array<number>) {
+        //根据当前的view和project, 对所有三角形进行投影计算， clip, 
+        //对三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
+
+    }
+
     public flush() {
         this.bitBlit(this.width, this.height, this.frameBuffer)
     }
@@ -392,6 +399,41 @@ export default class App {
         
         this.renderder.drawTriangle({x:100, y:200, color:Color.RED}, {x:200, y:250, color:Color.BLUE},{x:150, y:350, color:Color.GREEN})
         this.renderder.drawTriangle({x:100, y:200, color:Color.GREEN}, {x:500, y:100, color:Color.BLUE}, {x:200, y:250, color:Color.RED})
+
+
+        let va = [
+            {x:-1, y:-1, z:1, color:Color.GREEN}, 
+            {x:1,  y:-1, z:1, color:Color.GREEN}, 
+            {x:1,  y:1, z:1, color:Color.GREEN}, 
+            {x:-1,  y:1, z:1, color:Color.GREEN}, 
+
+            {x:-1, y:-1, z:-1, color:Color.GREEN}, 
+            {x:1,  y:-1, z:-1, color:Color.GREEN}, 
+            {x:1,  y:1, z:-1, color:Color.GREEN}, 
+            {x:-1,  y:1, z:-1, color:Color.GREEN}, 
+
+        ] //立方体8个顶点
+        let elements = [
+            0, 1, 2,  //front
+            2, 3, 1,
+
+            7, 6, 5,  //back
+            5, 4, 7,
+
+            0, 4, 5,
+            5, 1, 0,
+
+            1, 5, 6,
+            6, 2, 1,
+            
+            2, 6, 7,
+            7, 3, 2,
+
+            3, 7, 4,
+            4, 0, 3
+
+        ] //24个三角形,立方体外表面
+        this.renderder.drawElements(va, elements)
 
         this.renderder.flush()
     }

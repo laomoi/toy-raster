@@ -199,15 +199,6 @@ var Renderer = (function () {
             this.zBuffer[l] = NaN;
         }
     };
-    Renderer.prototype.drawBox = function () {
-        var pixelsSize = this.width * this.height * 4;
-        for (var i = 0; i < pixelsSize; i += 4) {
-            this.frameBuffer[i] = 255;
-            this.frameBuffer[i + 1] = i % 255;
-            this.frameBuffer[i + 2] = i % 255;
-            this.frameBuffer[i + 3] = 255;
-        }
-    };
     Renderer.prototype.drawLine = function (x0, y0, x1, y1, color) {
         if (x0 == x1) {
             var dir = y0 < y1 ? 1 : -1;
@@ -308,6 +299,10 @@ var Renderer = (function () {
             this.frameBuffer[pstart + 3] = color.a;
         }
     };
+    Renderer.prototype.drawElements = function (va, elements) {
+        //根据当前的view和project, 对所有三角形进行投影计算， clip, 
+        //对三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
+    };
     Renderer.prototype.flush = function () {
         this.bitBlit(this.width, this.height, this.frameBuffer);
     };
@@ -328,6 +323,31 @@ var App = (function () {
         this.renderder.clear();
         this.renderder.drawTriangle({ x: 100, y: 200, color: Color.RED }, { x: 200, y: 250, color: Color.BLUE }, { x: 150, y: 350, color: Color.GREEN });
         this.renderder.drawTriangle({ x: 100, y: 200, color: Color.GREEN }, { x: 500, y: 100, color: Color.BLUE }, { x: 200, y: 250, color: Color.RED });
+        var va = [
+            { x: -1, y: -1, z: 1, color: Color.GREEN },
+            { x: 1, y: -1, z: 1, color: Color.GREEN },
+            { x: 1, y: 1, z: 1, color: Color.GREEN },
+            { x: -1, y: 1, z: 1, color: Color.GREEN },
+            { x: -1, y: -1, z: -1, color: Color.GREEN },
+            { x: 1, y: -1, z: -1, color: Color.GREEN },
+            { x: 1, y: 1, z: -1, color: Color.GREEN },
+            { x: -1, y: 1, z: -1, color: Color.GREEN },
+        ];
+        var elements = [
+            0, 1, 2,
+            2, 3, 1,
+            7, 6, 5,
+            5, 4, 7,
+            0, 4, 5,
+            5, 1, 0,
+            1, 5, 6,
+            6, 2, 1,
+            2, 6, 7,
+            7, 3, 2,
+            3, 7, 4,
+            4, 0, 3
+        ];
+        this.renderder.drawElements(va, elements);
         this.renderder.flush();
     };
     return App;

@@ -1,9 +1,52 @@
+
+interface Color {
+    r:number,
+    g:number,
+    b:number,
+    a:number,
+}
+
+interface UV {
+    u:number,
+    v:number,
+}
+
+interface Vertex {
+    x:number,
+    y:number,
+    z?:number, //z is optional
+    color?:Color,//default White
+    uv?:UV,
+}
+
+interface Camera {
+    view: Matrix,
+    projection:Matrix,
+    vp:Matrix //projection*view
+}
+
+class ColorEnums {
+    public static BLACK:Color = {r:0, g:0, b:0, a:255}
+    public static WHITE:Color = {r:255, g:255, b:255, a:255}
+    public static RED:Color =  {r:255, g:0, b:0, a:255}
+    public static BLUE:Color =  {r:0, g:0, b:255, a:255}
+    public static GREEN:Color =  {r:0, g:255, b:0, a:255}
+    public static clone(color:Color):Color{
+        return {r:color.r, g:color.g, b:color.b, a:color.a}
+    }
+}
+
 class Vector{
     public x:number
     public y:number
     public z:number
     public w:number = 1.0
-    
+    public constructor(x:number, y:number, z:number, w:number) {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
     public getLength():number{
         return Math.sqrt( this.x*this.x + this.y*this.y + this.z*this.z )
     }
@@ -79,12 +122,15 @@ class Matrix {
         this.m = []
         for (let i=0;i<4;i++) {
             let col = new Float32Array(4)
-            for (let j=0;j<4;j++){
-                col[j] = j == i ? 1: 0 //初始化成单位矩阵
-            }
             this.m.push(col)
         } 
+        this.identify()
     } 
+
+    public identify(){
+        this.setValue(0)
+        this.m[0][0] = this.m[1][1]= this.m[2][2]= this.m[3][3] = 1
+    }
 
     public multiply(t:Matrix, dst:Matrix=null):Matrix{
         if (dst == null){
@@ -110,84 +156,65 @@ class Matrix {
         }
     }
 
-    public static setPerspective(dst:Matrix, fovy:number, aspect:number, near:number, far:number){
-        dst.setValue(0)  
+    public setPerspective(fovy:number, aspect:number, near:number, far:number){
+        this.setValue(0)  
         let tan = Math.tan(fovy/2) // tan =t/n, aspect = r/t
         let nt = 1 / tan  // = n/t
         let nr = nt / aspect // = n/r
         let n = Math.abs(near)
         let f = Math.abs(far)
-        dst.m[0][0] = nr  
-        dst.m[1][1] = nt
-        dst.m[2][2] = (n+f)/(n-f)
-        dst.m[3][2] = 2*f*n/(f-n)
-        dst.m[2][3] = 1
+        this.m[0][0] = nr  
+        this.m[1][1] = nt
+        this.m[2][2] = (n+f)/(n-f)
+        this.m[3][2] = 2*f*n/(f-n)
+        this.m[2][3] = 1
     }
 
-    public static setLookAt(dst:Matrix, eye:Vector, up:Vector, at:Vector) {
+    public  setLookAt(eye:Vector, up:Vector, at:Vector) {
         //w is reverse of look at direction, wuv is the axises of the camera, 
         //The equation is from <fundamentals of CG> 4th. 7.1
         let w = at.sub(eye).normalize().reverse()
         let u = up.cross(w).normalize()
         let v = w.cross(u)
-        dst.setValue(0)
+        this.setValue(0)
 
-        dst.m[0][0] = u.x
-        dst.m[1][0] = u.y
-        dst.m[2][0] = u.z
+        this.m[0][0] = u.x
+        this.m[1][0] = u.y
+        this.m[2][0] = u.z
 
-        dst.m[0][1] = v.x
-        dst.m[1][1] = v.y
-        dst.m[2][1] = v.z
+        this.m[0][1] = v.x
+        this.m[1][1] = v.y
+        this.m[2][1] = v.z
 
-        dst.m[0][2] = w.x
-        dst.m[1][2] = w.y
-        dst.m[2][2] = w.z
+        this.m[0][2] = w.x
+        this.m[1][2] = w.y
+        this.m[2][2] = w.z
 
-        dst.m[3][3] = 1
+        this.m[3][3] = 1
 
         //translate
         let tEye = eye.reverse()
-        dst.m[3][0] = u.dot(tEye)
-        dst.m[3][1] = v.dot(tEye)
-        dst.m[3][2] = w.dot(tEye)
+        this.m[3][0] = u.dot(tEye)
+        this.m[3][1] = v.dot(tEye)
+        this.m[3][2] = w.dot(tEye)
     }
 }
 
 class MathUtils {
 
-    public static linearInterpolateValue(value1:number, value2:number, t:number) {
-        return (1-t) * value1 + t * value2
-    }
+    // public static linearInterpolateValue(value1:number, value2:number, t:number) {
+    //     return (1-t) * value1 + t * value2
+    // }
 
-    public static linearInterpolateVector(vec1:Vector, vec2:Vector, t:number, dst:Vector=null) {
-        if (dst == null){
-            dst = new Vector()
-        }
-        dst.x = MathUtils.linearInterpolateValue(vec1.x, vec2.x, t)
-        dst.y = MathUtils.linearInterpolateValue(vec1.y, vec2.y, t)
-        dst.z = MathUtils.linearInterpolateValue(vec1.z, vec2.z, t)
-        return dst
-    }
-}
-
-
-class Color {
-    public r:number
-    public g:number
-    public b:number
-    public a:number
-    constructor(r:number, g:number, b:number, a:number) {
-        this.a = a
-        this.r = r
-        this.g = g
-        this.b = b
-    }
-    public static BLACK:Color = new Color(0, 0, 0, 255)
-    public static WHITE:Color = new Color(255, 255, 255, 255)
-    public static RED:Color = new Color(255, 0, 0, 255)
-    public static BLUE:Color = new Color(0, 0, 255, 255)
-    public static GREEN:Color = new Color(0, 255, 0, 255)
+    // public static linearInterpolateVector(vec1:Vector, vec2:Vector, t:number, dst:Vector=null) {
+    //     if (dst == null){
+    //         dst = new Vector()
+    //     }
+    //     dst.x = MathUtils.linearInterpolateValue(vec1.x, vec2.x, t)
+    //     dst.y = MathUtils.linearInterpolateValue(vec1.y, vec2.y, t)
+    //     dst.z = MathUtils.linearInterpolateValue(vec1.z, vec2.z, t)
+    //     return dst
+    // }
 
     public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {
         dstColor.r = color1.r*a + color2.r*b + color3.r*c
@@ -197,40 +224,30 @@ class Color {
     }
 }
 
-interface UV {
-    u:number,
-    v:number,
-}
-
-interface Vertex {
-    x:number,
-    y:number,
-    z?:number, //z is optional
-    color?:Color,//default White
-    uv?:UV,
-}
-
 
 
 class Renderer {
-    protected bitBlit:any = null
     public width:number 
     public height:number
     public frameBuffer:Uint8Array = null
     public zBuffer:Float32Array = null
+    public backgroundColor:Color = ColorEnums.clone(ColorEnums.BLACK)
+    protected camera:Camera = {
+        view: new Matrix(),
+        projection: new Matrix(),
+        vp: new Matrix()
+    }
 
-    public backgroundColor:Color = Color.BLACK
-
-    constructor(width:number, height:number, blitCallback:any) {
+    constructor(width:number, height:number) {
         this.width = width
         this.height = height
-        this.bitBlit = blitCallback
 
         this.frameBuffer = new Uint8Array(width*height*4)
         this.zBuffer = new Float32Array(width*height)
+
+        this.setDefaultCamera()
     }
 
- 
     public clear() {
         for (let l=0;l<this.frameBuffer.length;l+=4){
             this.frameBuffer[l] = this.backgroundColor.r
@@ -268,7 +285,6 @@ class Renderer {
                     x0 = x1, y0 = y1
                     x1 = tx, y1 = ty
                 }
-
                 let dir = y1 > y0 ? 1: -1
                 let y = y0
                 let d = (y0-y1)*(x0+1) + (x1-x0)*(y0+0.5*dir) + x0*y1 - x1*y0
@@ -309,17 +325,15 @@ class Renderer {
     }
 
     public drawTriangle(v0:Vertex, v1:Vertex, v2:Vertex) {
-        //use barycentric coordinates to check point inside triangle and the interpolation value
-        //use AABB for performance
-        //Edge drawing:
-        // use (x,y) = (-1,-1) to decide the pixel at the same side or not, if yes, 
-        //then the pixel on the edge is belongs the triangle
+        //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
+        //使用AABB来优化性能
+        //对于三角形边(edge case)上的点, 使用的是<CG 4th>上的算法， 使用一个Off-screen point(-1, -1) 来判断是否在同一边
         let x0 = v0.x, x1 =v1.x, x2 = v2.x, y0 = v0.x, y1=v1.y, y2=v2.y
         let minX = Math.floor( Math.min(x0, x1, x2) )
         let maxX = Math.ceil( Math.max(x0, x1, x2) )
         let minY = Math.floor( Math.min(y0, y1, y2) )
         let maxY = Math.ceil( Math.max(y0, y1, y2) )
-        let c:Color = new Color(255,255, 255, 255)
+        let c:Color = ColorEnums.clone(ColorEnums.WHITE)
         let vs = [v0, v1, v2]
         let fBelta = this.barycentricFunc(vs, 2, 0, x1, y1)
         let fGama = this.barycentricFunc(vs, 0, 1, x2, y2)
@@ -338,7 +352,7 @@ class Renderer {
                     &&  (gama > 0 || fGama*this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) >0) 
                       ){
                         //inside the triangle , and the edge belongs to the triangle
-                        Color.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
+                        MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
                         this.setPixel(x, y, c)
                     }
                 }
@@ -359,12 +373,25 @@ class Renderer {
     //va is array of vertex, elements is triangles using vertex index in va
     public drawElements(va:Array<Vertex>, elements:Array<number>) {
         //根据当前的view和project, 对所有三角形进行投影计算， clip, 
-        //对三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
+        //对每一個三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
 
     }
 
-    public flush() {
-        this.bitBlit(this.width, this.height, this.frameBuffer)
+    protected setDefaultCamera() {
+        let eye = new Vector(0, 1, 2, 1)
+        let at = new Vector(0, 0, 0, 1)
+        let up = new Vector(0, 1, 0, 1)
+        let fovy = Math.PI / 2
+        let aspect = this.width / this.height
+        let near = 1
+        let far = 500
+        this.setCamera(eye, at, up, fovy, aspect, near, far)
+    }
+
+    public setCamera(eye:Vector, up:Vector, lookAt:Vector, fovy:number, aspect:number, near:number, far:number) {
+        this.camera.view.setLookAt(eye, up, lookAt)
+        this.camera.projection.setPerspective(fovy, aspect, near, far)
+        this.camera.vp = this.camera.view.multiply(this.camera.projection)
     }
 }
 
@@ -373,7 +400,8 @@ export default class App {
     protected bitBlit:any = null
     protected renderder:Renderer
     constructor(canvasWidth:number, canvasHeight:number, blitCallback:any) {
-        this.renderder = new Renderer(canvasWidth, canvasHeight, blitCallback)
+        this.renderder = new Renderer(canvasWidth, canvasHeight)
+        this.bitBlit = blitCallback
         
         let self = this
         let wrapMainLoop = function() {
@@ -397,20 +425,20 @@ export default class App {
         // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
         // this.renderder.drawTriangle({x:100, y:100, color:Color.RED}, {x:200, y:100, color:Color.BLUE},{x:150, y:150, color:Color.GREEN})
         
-        this.renderder.drawTriangle({x:100, y:200, color:Color.RED}, {x:200, y:250, color:Color.BLUE},{x:150, y:350, color:Color.GREEN})
-        this.renderder.drawTriangle({x:100, y:200, color:Color.GREEN}, {x:500, y:100, color:Color.BLUE}, {x:200, y:250, color:Color.RED})
+        this.renderder.drawTriangle({x:100, y:200, color:ColorEnums.RED}, {x:200, y:250, color:ColorEnums.BLUE},{x:150, y:350, color:ColorEnums.GREEN})
+        this.renderder.drawTriangle({x:100, y:200, color:ColorEnums.GREEN}, {x:500, y:100, color:ColorEnums.BLUE}, {x:200, y:250, color:ColorEnums.RED})
 
 
         let va = [
-            {x:-1, y:-1, z:1, color:Color.GREEN}, 
-            {x:1,  y:-1, z:1, color:Color.GREEN}, 
-            {x:1,  y:1, z:1, color:Color.GREEN}, 
-            {x:-1,  y:1, z:1, color:Color.GREEN}, 
+            {x:-1, y:-1, z:1, color:ColorEnums.GREEN}, 
+            {x:1,  y:-1, z:1, color:ColorEnums.GREEN}, 
+            {x:1,  y:1, z:1, color:ColorEnums.GREEN}, 
+            {x:-1,  y:1, z:1, color:ColorEnums.GREEN}, 
 
-            {x:-1, y:-1, z:-1, color:Color.GREEN}, 
-            {x:1,  y:-1, z:-1, color:Color.GREEN}, 
-            {x:1,  y:1, z:-1, color:Color.GREEN}, 
-            {x:-1,  y:1, z:-1, color:Color.GREEN}, 
+            {x:-1, y:-1, z:-1, color:ColorEnums.GREEN}, 
+            {x:1,  y:-1, z:-1, color:ColorEnums.GREEN}, 
+            {x:1,  y:1, z:-1, color:ColorEnums.GREEN}, 
+            {x:-1,  y:1, z:-1, color:ColorEnums.GREEN}, 
 
         ] //立方体8个顶点
         let elements = [
@@ -435,7 +463,11 @@ export default class App {
         ] //24个三角形,立方体外表面
         this.renderder.drawElements(va, elements)
 
-        this.renderder.flush()
+        this.flush()
     }
 
+
+    protected flush() {
+        this.bitBlit(this.renderder.width, this.renderder.height, this.renderder.frameBuffer)
+    }
 }

@@ -523,11 +523,7 @@ class Renderer {
                 vert.posProject = new Vector()
             }
             vert.posWorld.transform(cameraTransform, vert.posProject)
-            // console.log(vert.posProject)
-
-            // vert.posProject.transform(this.camera.projection, vert.posProject)
-            // console.log(vert.posProject)
-            vert.rhw = 1/vert.posProject.w
+            vert.rhw = 1/vert.posProject.w //w等同于投影前的视图坐标的z
             vert.posProject.homogenenize()
             if (MathUtils.isInsideViewVolumn(vert.posProject)){
                 if (vert.posScreen == null){
@@ -593,13 +589,7 @@ export default class App {
         // this.renderder.drawLine(200,300, 2000, 300, Color.WHITE)
         // this.renderder.drawLine(200,300, 900, 100, Color.WHITE)
         // this.renderder.drawLine(200,300, 900, 500, Color.WHITE)
-        // this.renderder.drawLine(200,300, 150, 700, Color.WHITE)
-        // this.renderder.drawLine(200,300, 450, 700, Color.WHITE)
-        // this.renderder.drawLine(200,300, 150, 100, Color.WHITE)
-
-        // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
-        // this.renderder.drawTriangle({x:100, y:100, color:Color.RED}, {x:200, y:100, color:Color.BLUE},{x:150, y:150, color:Color.GREEN})
-        
+   
         // this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.RED}, {posScreen:new Vector(200,250), color:ColorEnums.BLUE},{posScreen:new Vector(150,350), color:ColorEnums.GREEN})
         // this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.GREEN}, {posScreen:new Vector(500,100), color:ColorEnums.BLUE}, {posScreen:new Vector(200,250), color:ColorEnums.RED})
 

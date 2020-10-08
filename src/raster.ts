@@ -12,11 +12,11 @@ interface UV {
 }
 
 interface Vertex {
-    x:number,
-    y:number,
-    z?:number, //z is optional
+    posWorld?:Vector,
     color?:Color,//default White
     uv?:UV,
+    posProject?:Vector//冗余字段, 投影坐标, 变换计算时不要修改pos的值, 结果都存储在posTransform里
+    posScreen?:Vector//冗余字段, 屏幕坐标
 }
 
 interface Camera {
@@ -31,6 +31,8 @@ class ColorEnums {
     public static RED:Color =  {r:255, g:0, b:0, a:255}
     public static BLUE:Color =  {r:0, g:0, b:255, a:255}
     public static GREEN:Color =  {r:0, g:255, b:0, a:255}
+    public static ORANGE:Color =  {r:255, g:255, b:0, a:255}
+
     public static clone(color:Color):Color{
         return {r:color.r, g:color.g, b:color.b, a:color.a}
     }
@@ -40,8 +42,8 @@ class Vector{
     public x:number
     public y:number
     public z:number
-    public w:number = 1.0
-    public constructor(x:number, y:number, z:number, w:number) {
+    public w:number
+    public constructor(x:number=0, y:number=0, z:number=0, w:number=1) {
         this.x = x
         this.y = y
         this.z = z
@@ -113,6 +115,31 @@ class Vector{
         }
         return dst
     }
+
+    public transform(matrix:Matrix, dst:Vector=null) {
+        if (dst == null){
+            dst = new Vector()
+        }
+        let x = this.x, y = this.y, z = this.z, w = this.w
+        let m = matrix.m
+        dst.x = m[0][0]*x + m[1][0]*y + m[2][0]*z + m[3][0]*w
+        dst.y = m[0][1]*x + m[1][1]*y + m[2][1]*z + m[3][1]*w
+        dst.z = m[0][2]*x + m[1][2]*y + m[2][2]*z + m[3][2]*w
+        dst.w = m[0][3]*x + m[1][3]*y + m[2][3]*z + m[3][3]*w
+        return dst
+    }
+
+    //齐次坐标归一
+    public homogenenize(){
+        if (this.w != 0) {
+            this.x /= this.w
+            this.y /= this.w
+            this.z /= this.w
+            this.w = 1
+        }
+    }
+
+
 }
 
 // 4x4 列向量矩阵 , 右手坐标系
@@ -158,19 +185,20 @@ class Matrix {
 
     public setPerspective(fovy:number, aspect:number, near:number, far:number){
         this.setValue(0)  
+        let n = Math.abs(near)
+        let f = Math.abs(far)
         let tan = Math.tan(fovy/2) // tan =t/n, aspect = r/t
         let nt = 1 / tan  // = n/t
         let nr = nt / aspect // = n/r
-        let n = Math.abs(near)
-        let f = Math.abs(far)
+
         this.m[0][0] = nr  
         this.m[1][1] = nt
         this.m[2][2] = (n+f)/(n-f)
-        this.m[3][2] = 2*f*n/(f-n)
+        this.m[3][2] = 2*f*n/(n-f)
         this.m[2][3] = 1
     }
 
-    public  setLookAt(eye:Vector, up:Vector, at:Vector) {
+    public setLookAt(eye:Vector, at:Vector, up:Vector,) {
         //w is reverse of look at direction, wuv is the axises of the camera, 
         //The equation is from <fundamentals of CG> 4th. 7.1
         let w = at.sub(eye).normalize().reverse()
@@ -216,11 +244,35 @@ class MathUtils {
     //     return dst
     // }
 
+    public static isInsideViewVolumn(v:Vector){
+        if (v.x < -1 || v.x > 1){
+            return false
+        }
+        if (v.y < -1 || v.y > 1){
+            return false
+        }
+        if (v.z < -1 || v.z > 1){
+            return false
+        }
+        return true
+    }
+
+    public static convertToScreenPos(v:Vector, dst:Vector, width:number, height:number){
+        dst.x = (v.x + 1)/2 * width
+        dst.y = (v.y + 1)/2 * height
+        dst.z = v.z
+        return dst
+    }
+
     public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {
         dstColor.r = color1.r*a + color2.r*b + color3.r*c
         dstColor.g = color1.g*a + color2.g*b + color3.g*c
         dstColor.b = color1.b*a + color2.b*b + color3.b*c
         dstColor.a = color1.a*a + color2.a*b + color3.a*c
+    }
+
+    public static getInterpValue(v1:number, v2:number, v3:number,  a:number, b:number, c:number) {
+        return v1*a + v2*b + v3*c
     }
 }
 
@@ -320,21 +372,21 @@ class Renderer {
         }
     }
 
-    protected barycentricFunc(vs:Array<Vertex>, a:number, b:number, x:number, y:number):number{
+    protected barycentricFunc(vs:Array<Vector>, a:number, b:number, x:number, y:number):number{
         return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
     }
 
-    public drawTriangle(v0:Vertex, v1:Vertex, v2:Vertex) {
+    public drawTriangle2D(v0:Vertex, v1:Vertex, v2:Vertex) {
         //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
         //使用AABB来优化性能
         //对于三角形边(edge case)上的点, 使用的是<CG 4th>上的算法， 使用一个Off-screen point(-1, -1) 来判断是否在同一边
-        let x0 = v0.x, x1 =v1.x, x2 = v2.x, y0 = v0.x, y1=v1.y, y2=v2.y
+        let vs = [v0.posScreen, v1.posScreen, v2.posScreen]
+        let x0 = vs[0].x, x1 = vs[1].x, x2 = vs[2].x, y0 = vs[0].y, y1=vs[1].y, y2=vs[2].y
         let minX = Math.floor( Math.min(x0, x1, x2) )
         let maxX = Math.ceil( Math.max(x0, x1, x2) )
         let minY = Math.floor( Math.min(y0, y1, y2) )
         let maxY = Math.ceil( Math.max(y0, y1, y2) )
         let c:Color = ColorEnums.clone(ColorEnums.WHITE)
-        let vs = [v0, v1, v2]
         let fBelta = this.barycentricFunc(vs, 2, 0, x1, y1)
         let fGama = this.barycentricFunc(vs, 0, 1, x2, y2)
         let fAlpha =  this.barycentricFunc(vs, 1, 2, x0, y0)
@@ -352,8 +404,14 @@ class Renderer {
                     &&  (gama > 0 || fGama*this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) >0) 
                       ){
                         //inside the triangle , and the edge belongs to the triangle
-                        MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
-                        this.setPixel(x, y, c)
+                        let z = MathUtils.getInterpValue(v0.posScreen.z, v1.posScreen.z, v2.posScreen.z, alpha, belta, gama)
+                        let zPos = this.width * y + x
+                        z = Math.abs(z)
+                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > z) {
+                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
+                            this.setPixel(x, y, c)
+                            this.zBuffer[zPos] = z
+                        }
                     }
                 }
             }
@@ -372,13 +430,50 @@ class Renderer {
 
     //va is array of vertex, elements is triangles using vertex index in va
     public drawElements(va:Array<Vertex>, elements:Array<number>) {
-        //根据当前的view和project, 对所有三角形进行投影计算， clip, 
-        //对每一個三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
+        //根据当前的view和project, 对所有三角形进行投影计算
+        //对每一个三角形进行光栅化， 然后进行着色，zbuffer和framebuffer赋值
+        //没做backface culling, 只做了view volumn culling
+        //三角形细分的clip没做
+        if (elements.length % 3 != 0){
+            return
+        }
+        let cameraTransform = this.camera.vp
+        for (let vert of va) {
+            if (vert.posProject == null) {
+                vert.posProject = new Vector()
+            }
+            vert.posWorld.transform(this.camera.view, vert.posProject)
+            console.log(vert.posProject)
 
+            vert.posProject.transform(this.camera.projection, vert.posProject)
+            console.log(vert.posProject)
+
+            vert.posProject.homogenenize()
+            if (MathUtils.isInsideViewVolumn(vert.posProject)){
+                if (vert.posScreen == null){
+                    vert.posScreen = new Vector()
+                }
+                MathUtils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
+            }
+        }
+        for (let i=0;i<elements.length;i+=3) {
+            let trianglePoints = [va[elements[i]], va[elements[i+1]], va[elements[i+2]]]
+            let culling = false
+            for (let p of trianglePoints) {
+                //view volumn culling
+                if (!MathUtils.isInsideViewVolumn(p.posProject) ) {
+                    culling = true
+                    break;
+                }
+            }
+            if (!culling) {
+                this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2])
+            }
+        }
     }
 
     protected setDefaultCamera() {
-        let eye = new Vector(0, 1, 2, 1)
+        let eye = new Vector(0.5, 1.5, 3, 1)
         let at = new Vector(0, 0, 0, 1)
         let up = new Vector(0, 1, 0, 1)
         let fovy = Math.PI / 2
@@ -388,8 +483,8 @@ class Renderer {
         this.setCamera(eye, at, up, fovy, aspect, near, far)
     }
 
-    public setCamera(eye:Vector, up:Vector, lookAt:Vector, fovy:number, aspect:number, near:number, far:number) {
-        this.camera.view.setLookAt(eye, up, lookAt)
+    public setCamera(eye:Vector, lookAt:Vector, up:Vector, fovy:number, aspect:number, near:number, far:number) {
+        this.camera.view.setLookAt(eye, lookAt, up)
         this.camera.projection.setPerspective(fovy, aspect, near, far)
         this.camera.vp = this.camera.view.multiply(this.camera.projection)
     }
@@ -425,20 +520,20 @@ export default class App {
         // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
         // this.renderder.drawTriangle({x:100, y:100, color:Color.RED}, {x:200, y:100, color:Color.BLUE},{x:150, y:150, color:Color.GREEN})
         
-        this.renderder.drawTriangle({x:100, y:200, color:ColorEnums.RED}, {x:200, y:250, color:ColorEnums.BLUE},{x:150, y:350, color:ColorEnums.GREEN})
-        this.renderder.drawTriangle({x:100, y:200, color:ColorEnums.GREEN}, {x:500, y:100, color:ColorEnums.BLUE}, {x:200, y:250, color:ColorEnums.RED})
+        this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.RED}, {posScreen:new Vector(200,250), color:ColorEnums.BLUE},{posScreen:new Vector(150,350), color:ColorEnums.GREEN})
+        this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.GREEN}, {posScreen:new Vector(500,100), color:ColorEnums.BLUE}, {posScreen:new Vector(200,250), color:ColorEnums.RED})
 
+        
+        let va:Array<Vertex> = [
+            {posWorld:new Vector(-1,-1,1), color:ColorEnums.GREEN}, 
+            {posWorld:new Vector(1,-1,1), color:ColorEnums.BLUE}, 
+            {posWorld:new Vector(1,1,1),color:ColorEnums.RED}, 
+            {posWorld:new Vector(-1,1,1), color:ColorEnums.ORANGE}, 
 
-        let va = [
-            {x:-1, y:-1, z:1, color:ColorEnums.GREEN}, 
-            {x:1,  y:-1, z:1, color:ColorEnums.GREEN}, 
-            {x:1,  y:1, z:1, color:ColorEnums.GREEN}, 
-            {x:-1,  y:1, z:1, color:ColorEnums.GREEN}, 
-
-            {x:-1, y:-1, z:-1, color:ColorEnums.GREEN}, 
-            {x:1,  y:-1, z:-1, color:ColorEnums.GREEN}, 
-            {x:1,  y:1, z:-1, color:ColorEnums.GREEN}, 
-            {x:-1,  y:1, z:-1, color:ColorEnums.GREEN}, 
+            {posWorld:new Vector(-1,-1,-1), color:ColorEnums.GREEN}, 
+            {posWorld:new Vector(1,-1,-1), color:ColorEnums.BLUE}, 
+            {posWorld:new Vector(1,1,-1),color:ColorEnums.RED}, 
+            {posWorld:new Vector(-1,1,-1), color:ColorEnums.ORANGE}, 
 
         ] //立方体8个顶点
         let elements = [

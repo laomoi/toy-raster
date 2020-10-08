@@ -9,11 +9,15 @@ var ColorEnums = (function () {
     ColorEnums.RED = { r: 255, g: 0, b: 0, a: 255 };
     ColorEnums.BLUE = { r: 0, g: 0, b: 255, a: 255 };
     ColorEnums.GREEN = { r: 0, g: 255, b: 0, a: 255 };
+    ColorEnums.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
     return ColorEnums;
 })();
 var Vector = (function () {
     function Vector(x, y, z, w) {
-        this.w = 1.0;
+        if (x === void 0) { x = 0; }
+        if (y === void 0) { y = 0; }
+        if (z === void 0) { z = 0; }
+        if (w === void 0) { w = 1; }
         this.x = x;
         this.y = y;
         this.z = z;
@@ -84,6 +88,27 @@ var Vector = (function () {
         }
         return dst;
     };
+    Vector.prototype.transform = function (matrix, dst) {
+        if (dst === void 0) { dst = null; }
+        if (dst == null) {
+            dst = new Vector();
+        }
+        var x = this.x, y = this.y, z = this.z, w = this.w;
+        var m = matrix.m;
+        dst.x = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0] * w;
+        dst.y = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1] * w;
+        dst.z = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2] * w;
+        dst.w = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3] * w;
+        return dst;
+    };
+    Vector.prototype.homogenenize = function () {
+        if (this.w != 0) {
+            this.x /= this.w;
+            this.y /= this.w;
+            this.z /= this.w;
+            this.w = 1;
+        }
+    };
     return Vector;
 })();
 var Matrix = (function () {
@@ -124,18 +149,18 @@ var Matrix = (function () {
     };
     Matrix.prototype.setPerspective = function (fovy, aspect, near, far) {
         this.setValue(0);
+        var n = Math.abs(near);
+        var f = Math.abs(far);
         var tan = Math.tan(fovy / 2);
         var nt = 1 / tan;
         var nr = nt / aspect;
-        var n = Math.abs(near);
-        var f = Math.abs(far);
         this.m[0][0] = nr;
         this.m[1][1] = nt;
         this.m[2][2] = (n + f) / (n - f);
-        this.m[3][2] = 2 * f * n / (f - n);
+        this.m[3][2] = 2 * f * n / (n - f);
         this.m[2][3] = 1;
     };
-    Matrix.prototype.setLookAt = function (eye, up, at) {
+    Matrix.prototype.setLookAt = function (eye, at, up) {
         var w = at.sub(eye).normalize().reverse();
         var u = up.cross(w).normalize();
         var v = w.cross(u);
@@ -160,11 +185,32 @@ var Matrix = (function () {
 var MathUtils = (function () {
     function MathUtils() {
     }
+    MathUtils.isInsideViewVolumn = function (v) {
+        if (v.x < -1 || v.x > 1) {
+            return false;
+        }
+        if (v.y < -1 || v.y > 1) {
+            return false;
+        }
+        if (v.z < -1 || v.z > 1) {
+            return false;
+        }
+        return true;
+    };
+    MathUtils.convertToScreenPos = function (v, dst, width, height) {
+        dst.x = (v.x + 1) / 2 * width;
+        dst.y = (v.y + 1) / 2 * height;
+        dst.z = v.z;
+        return dst;
+    };
     MathUtils.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
         dstColor.r = color1.r * a + color2.r * b + color3.r * c;
         dstColor.g = color1.g * a + color2.g * b + color3.g * c;
         dstColor.b = color1.b * a + color2.b * b + color3.b * c;
         dstColor.a = color1.a * a + color2.a * b + color3.a * c;
+    };
+    MathUtils.getInterpValue = function (v1, v2, v3, a, b, c) {
+        return v1 * a + v2 * b + v3 * c;
     };
     return MathUtils;
 })();
@@ -258,14 +304,14 @@ var Renderer = (function () {
     Renderer.prototype.barycentricFunc = function (vs, a, b, x, y) {
         return ((vs[a].y - vs[b].y) * x + (vs[b].x - vs[a].x) * y + vs[a].x * vs[b].y - vs[b].x * vs[a].y);
     };
-    Renderer.prototype.drawTriangle = function (v0, v1, v2) {
-        var x0 = v0.x, x1 = v1.x, x2 = v2.x, y0 = v0.x, y1 = v1.y, y2 = v2.y;
+    Renderer.prototype.drawTriangle2D = function (v0, v1, v2) {
+        var vs = [v0.posScreen, v1.posScreen, v2.posScreen];
+        var x0 = vs[0].x, x1 = vs[1].x, x2 = vs[2].x, y0 = vs[0].y, y1 = vs[1].y, y2 = vs[2].y;
         var minX = Math.floor(Math.min(x0, x1, x2));
         var maxX = Math.ceil(Math.max(x0, x1, x2));
         var minY = Math.floor(Math.min(y0, y1, y2));
         var maxY = Math.ceil(Math.max(y0, y1, y2));
         var c = ColorEnums.clone(ColorEnums.WHITE);
-        var vs = [v0, v1, v2];
         var fBelta = this.barycentricFunc(vs, 2, 0, x1, y1);
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
@@ -279,8 +325,14 @@ var Renderer = (function () {
                     if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
                         && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
                         && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
-                        MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c);
-                        this.setPixel(x, y, c);
+                        var z = MathUtils.getInterpValue(v0.posScreen.z, v1.posScreen.z, v2.posScreen.z, alpha, belta, gama);
+                        var zPos = this.width * y + x;
+                        z = Math.abs(z);
+                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > z) {
+                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c);
+                            this.setPixel(x, y, c);
+                            this.zBuffer[zPos] = z;
+                        }
                     }
                 }
             }
@@ -296,11 +348,44 @@ var Renderer = (function () {
         }
     };
     Renderer.prototype.drawElements = function (va, elements) {
-        //根据当前的view和project, 对所有三角形进行投影计算， clip, 
-        //对每一個三角形进行光栅化， 然后进行着色，zbuffer覆盖, blend上framebuffer
+        if (elements.length % 3 != 0) {
+            return;
+        }
+        var cameraTransform = this.camera.vp;
+        for (var _i = 0; _i < va.length; _i++) {
+            var vert = va[_i];
+            if (vert.posProject == null) {
+                vert.posProject = new Vector();
+            }
+            vert.posWorld.transform(this.camera.view, vert.posProject);
+            console.log(vert.posProject);
+            vert.posProject.transform(this.camera.projection, vert.posProject);
+            console.log(vert.posProject);
+            vert.posProject.homogenenize();
+            if (MathUtils.isInsideViewVolumn(vert.posProject)) {
+                if (vert.posScreen == null) {
+                    vert.posScreen = new Vector();
+                }
+                MathUtils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height);
+            }
+        }
+        for (var i = 0; i < elements.length; i += 3) {
+            var trianglePoints = [va[elements[i]], va[elements[i + 1]], va[elements[i + 2]]];
+            var culling = false;
+            for (var _a = 0; _a < trianglePoints.length; _a++) {
+                var p = trianglePoints[_a];
+                if (!MathUtils.isInsideViewVolumn(p.posProject)) {
+                    culling = true;
+                    break;
+                }
+            }
+            if (!culling) {
+                this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2]);
+            }
+        }
     };
     Renderer.prototype.setDefaultCamera = function () {
-        var eye = new Vector(0, 1, 2, 1);
+        var eye = new Vector(0.5, 1.5, 3, 1);
         var at = new Vector(0, 0, 0, 1);
         var up = new Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
@@ -309,8 +394,8 @@ var Renderer = (function () {
         var far = 500;
         this.setCamera(eye, at, up, fovy, aspect, near, far);
     };
-    Renderer.prototype.setCamera = function (eye, up, lookAt, fovy, aspect, near, far) {
-        this.camera.view.setLookAt(eye, up, lookAt);
+    Renderer.prototype.setCamera = function (eye, lookAt, up, fovy, aspect, near, far) {
+        this.camera.view.setLookAt(eye, lookAt, up);
         this.camera.projection.setPerspective(fovy, aspect, near, far);
         this.camera.vp = this.camera.view.multiply(this.camera.projection);
     };
@@ -330,17 +415,17 @@ var App = (function () {
     }
     App.prototype.mainLoop = function () {
         this.renderder.clear();
-        this.renderder.drawTriangle({ x: 100, y: 200, color: ColorEnums.RED }, { x: 200, y: 250, color: ColorEnums.BLUE }, { x: 150, y: 350, color: ColorEnums.GREEN });
-        this.renderder.drawTriangle({ x: 100, y: 200, color: ColorEnums.GREEN }, { x: 500, y: 100, color: ColorEnums.BLUE }, { x: 200, y: 250, color: ColorEnums.RED });
+        this.renderder.drawTriangle2D({ posScreen: new Vector(100, 200), color: ColorEnums.RED }, { posScreen: new Vector(200, 250), color: ColorEnums.BLUE }, { posScreen: new Vector(150, 350), color: ColorEnums.GREEN });
+        this.renderder.drawTriangle2D({ posScreen: new Vector(100, 200), color: ColorEnums.GREEN }, { posScreen: new Vector(500, 100), color: ColorEnums.BLUE }, { posScreen: new Vector(200, 250), color: ColorEnums.RED });
         var va = [
-            { x: -1, y: -1, z: 1, color: ColorEnums.GREEN },
-            { x: 1, y: -1, z: 1, color: ColorEnums.GREEN },
-            { x: 1, y: 1, z: 1, color: ColorEnums.GREEN },
-            { x: -1, y: 1, z: 1, color: ColorEnums.GREEN },
-            { x: -1, y: -1, z: -1, color: ColorEnums.GREEN },
-            { x: 1, y: -1, z: -1, color: ColorEnums.GREEN },
-            { x: 1, y: 1, z: -1, color: ColorEnums.GREEN },
-            { x: -1, y: 1, z: -1, color: ColorEnums.GREEN },
+            { posWorld: new Vector(-1, -1, 1), color: ColorEnums.GREEN },
+            { posWorld: new Vector(1, -1, 1), color: ColorEnums.BLUE },
+            { posWorld: new Vector(1, 1, 1), color: ColorEnums.RED },
+            { posWorld: new Vector(-1, 1, 1), color: ColorEnums.ORANGE },
+            { posWorld: new Vector(-1, -1, -1), color: ColorEnums.GREEN },
+            { posWorld: new Vector(1, -1, -1), color: ColorEnums.BLUE },
+            { posWorld: new Vector(1, 1, -1), color: ColorEnums.RED },
+            { posWorld: new Vector(-1, 1, -1), color: ColorEnums.ORANGE },
         ];
         var elements = [
             0, 1, 2,

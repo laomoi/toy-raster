@@ -385,7 +385,7 @@ var Renderer = (function () {
         }
     };
     Renderer.prototype.setDefaultCamera = function () {
-        var eye = new Vector(0, 0, 3, 1);
+        var eye = new Vector(2, 2, 3, 1);
         var at = new Vector(0, 0, 0, 1);
         var up = new Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
@@ -429,7 +429,7 @@ var App = (function () {
         ];
         var elements = [
             0, 1, 2,
-            2, 3, 1,
+            2, 3, 0,
             7, 6, 5,
             5, 4, 7,
             0, 4, 5,

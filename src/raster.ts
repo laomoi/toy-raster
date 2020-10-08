@@ -476,7 +476,7 @@ class Renderer {
     }
 
     protected setDefaultCamera() {
-        let eye = new Vector(0, 0, 3, 1)
+        let eye = new Vector(2, 2, 3, 1)
         let at = new Vector(0, 0, 0, 1)
         let up = new Vector(0, 1, 0, 1)
         let fovy = Math.PI / 2
@@ -541,16 +541,16 @@ export default class App {
         ] //立方体8个顶点
         let elements = [
             0, 1, 2,  //front
-            2, 3, 1,
+            2, 3, 0,
             7, 6, 5,  //back
             5, 4, 7,
-            0, 4, 5,
+            0, 4, 5, //bottom
             5, 1, 0,
-            1, 5, 6,
+            1, 5, 6, //right
             6, 2, 1,
-            2, 6, 7,
+            2, 6, 7,  //top
             7, 3, 2,
-            3, 7, 4,
+            3, 7, 4,  //left
             4, 0, 3
 
         ] //24个三角形,立方体外表面

@@ -182,6 +182,38 @@ var Matrix = (function () {
     };
     return Matrix;
 })();
+var Texture = (function () {
+    function Texture(width, height) {
+        this.data = [];
+        this.tmp = { r: 0, g: 0, b: 0, a: 0 };
+        this.width = width;
+        this.height = height;
+    }
+    Texture.prototype.setPixel = function (x, y, color) {
+        var pos = y * this.width + x;
+        this.data[pos] = color;
+    };
+    Texture.prototype.sample = function (uv) {
+        var x = uv.u * this.width;
+        var y = uv.v * this.height;
+        x = Math.floor(x + 0.5);
+        y = Math.floor(y + 0.5);
+        if (x >= this.width) {
+            x = x % this.width;
+        }
+        if (y >= this.height) {
+            y = y % this.height;
+        }
+        var pos = y * this.width + x;
+        var color = this.data[pos];
+        this.tmp.a = color.a;
+        this.tmp.r = color.r;
+        this.tmp.g = color.g;
+        this.tmp.b = color.b;
+        return this.tmp;
+    };
+    return Texture;
+})();
 var MathUtils = (function () {
     function MathUtils() {
     }
@@ -204,13 +236,24 @@ var MathUtils = (function () {
         return dst;
     };
     MathUtils.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
-        dstColor.r = color1.r * a + color2.r * b + color3.r * c;
-        dstColor.g = color1.g * a + color2.g * b + color3.g * c;
-        dstColor.b = color1.b * a + color2.b * b + color3.b * c;
-        dstColor.a = color1.a * a + color2.a * b + color3.a * c;
+        dstColor.r = MathUtils.getInterpValue(color1.r, color2.r, color3.r, a, b, c);
+        dstColor.g = MathUtils.getInterpValue(color1.g, color2.g, color3.g, a, b, c);
+        dstColor.b = MathUtils.getInterpValue(color1.b, color2.b, color3.b, a, b, c);
+        dstColor.a = MathUtils.getInterpValue(color1.a, color2.a, color3.a, a, b, c);
+    };
+    MathUtils.getInterpUV = function (uv1, uv2, uv3, a, b, c, dstUV) {
+        dstUV.u = MathUtils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c);
+        dstUV.v = MathUtils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c);
     };
     MathUtils.getInterpValue = function (v1, v2, v3, a, b, c) {
         return v1 * a + v2 * b + v3 * c;
+    };
+    MathUtils.multiplyColor = function (color1, color2, dst) {
+        dst.r = color1.r * color2.r / 255;
+        dst.g = color1.g * color2.g / 255;
+        dst.b = color1.b * color2.b / 255;
+        dst.a = color1.a * color2.a / 255;
+        return dst;
     };
     return MathUtils;
 })();
@@ -219,6 +262,7 @@ var Renderer = (function () {
         this.frameBuffer = null;
         this.zBuffer = null;
         this.backgroundColor = ColorEnums.clone(ColorEnums.BLACK);
+        this.activeTexture = null;
         this.camera = {
             view: new Matrix(),
             projection: new Matrix(),
@@ -311,11 +355,12 @@ var Renderer = (function () {
         var maxX = Math.ceil(Math.max(x0, x1, x2));
         var minY = Math.floor(Math.min(y0, y1, y2));
         var maxY = Math.ceil(Math.max(y0, y1, y2));
-        var c = ColorEnums.clone(ColorEnums.WHITE);
         var fBelta = this.barycentricFunc(vs, 2, 0, x1, y1);
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
         var offScreenPointX = -1, offScreenPointY = -1;
+        var tempColor = ColorEnums.clone(ColorEnums.WHITE);
+        var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
                 var belta = this.barycentricFunc(vs, 2, 0, x, y) / fBelta;
@@ -325,18 +370,35 @@ var Renderer = (function () {
                     if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
                         && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
                         && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
-                        var z = MathUtils.getInterpValue(v0.posScreen.z, v1.posScreen.z, v2.posScreen.z, alpha, belta, gama);
+                        var rhw = MathUtils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
                         var zPos = this.width * y + x;
-                        z = Math.abs(z);
-                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > z) {
-                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c);
-                            this.setPixel(x, y, c);
-                            this.zBuffer[zPos] = z;
+                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
+                            var w = 1 / (rhw != 0 ? rhw : 1);
+                            var a = alpha * w * v0.rhw;
+                            var b = belta * w * v1.rhw;
+                            var c = gama * w * v2.rhw;
+                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+                            MathUtils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
+                            var finalColor = this.fragmentShading(x, y, tempColor, uv);
+                            if (finalColor.a > 0) {
+                                this.setPixel(x, y, finalColor);
+                                this.zBuffer[zPos] = rhw;
+                            }
                         }
                     }
                 }
             }
         }
+    };
+    Renderer.prototype.fragmentShading = function (x, y, color, uv) {
+        if (this.activeTexture != null) {
+            var tex = this.activeTexture.sample(uv);
+            return MathUtils.multiplyColor(tex, color, tex);
+        }
+        return color;
+    };
+    Renderer.prototype.setActiveTexture = function (texture) {
+        this.activeTexture = texture;
     };
     Renderer.prototype.setPixel = function (x, y, color) {
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {
@@ -357,10 +419,8 @@ var Renderer = (function () {
             if (vert.posProject == null) {
                 vert.posProject = new Vector();
             }
-            vert.posWorld.transform(this.camera.view, vert.posProject);
-            console.log(vert.posProject);
-            vert.posProject.transform(this.camera.projection, vert.posProject);
-            console.log(vert.posProject);
+            vert.posWorld.transform(cameraTransform, vert.posProject);
+            vert.rhw = 1 / vert.posProject.w;
             vert.posProject.homogenenize();
             if (MathUtils.isInsideViewVolumn(vert.posProject)) {
                 if (vert.posScreen == null) {
@@ -385,7 +445,7 @@ var Renderer = (function () {
         }
     };
     Renderer.prototype.setDefaultCamera = function () {
-        var eye = new Vector(2, 2, 3, 1);
+        var eye = new Vector(1.5, 0, 3, 1);
         var at = new Vector(0, 0, 0, 1);
         var up = new Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
@@ -415,17 +475,15 @@ var App = (function () {
     }
     App.prototype.mainLoop = function () {
         this.renderder.clear();
-        this.renderder.drawTriangle2D({ posScreen: new Vector(100, 200), color: ColorEnums.RED }, { posScreen: new Vector(200, 250), color: ColorEnums.BLUE }, { posScreen: new Vector(150, 350), color: ColorEnums.GREEN });
-        this.renderder.drawTriangle2D({ posScreen: new Vector(100, 200), color: ColorEnums.GREEN }, { posScreen: new Vector(500, 100), color: ColorEnums.BLUE }, { posScreen: new Vector(200, 250), color: ColorEnums.RED });
         var va = [
-            { posWorld: new Vector(-1, -1, 1), color: ColorEnums.GREEN },
-            { posWorld: new Vector(1, -1, 1), color: ColorEnums.BLUE },
-            { posWorld: new Vector(1, 1, 1), color: ColorEnums.RED },
-            { posWorld: new Vector(-1, 1, 1), color: ColorEnums.ORANGE },
-            { posWorld: new Vector(-1, -1, -1), color: ColorEnums.GREEN },
-            { posWorld: new Vector(1, -1, -1), color: ColorEnums.BLUE },
-            { posWorld: new Vector(1, 1, -1), color: ColorEnums.RED },
-            { posWorld: new Vector(-1, 1, -1), color: ColorEnums.ORANGE },
+            { posWorld: new Vector(-1, -1, 1), color: ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new Vector(1, -1, 1), color: ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new Vector(1, 1, 1), color: ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new Vector(-1, 1, 1), color: ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new Vector(-1, -1, -1), color: ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new Vector(1, -1, -1), color: ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new Vector(1, 1, -1), color: ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new Vector(-1, 1, -1), color: ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -441,8 +499,25 @@ var App = (function () {
             3, 7, 4,
             4, 0, 3
         ];
+        this.renderder.setActiveTexture(this.createTexture());
         this.renderder.drawElements(va, elements);
         this.flush();
+    };
+    App.prototype.createTexture = function () {
+        var texture = new Texture(256, 256);
+        for (var i = 0; i < 256; i++) {
+            for (var j = 0; j < 256; j++) {
+                var x = Math.floor(i / 32);
+                var y = Math.floor(j / 32);
+                if ((x + y) % 2 == 0) {
+                    texture.setPixel(j, i, ColorEnums.BLUE);
+                }
+                else {
+                    texture.setPixel(j, i, ColorEnums.WHITE);
+                }
+            }
+        }
+        return texture;
     };
     App.prototype.flush = function () {
         this.bitBlit(this.renderder.width, this.renderder.height, this.renderder.frameBuffer);

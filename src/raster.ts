@@ -17,6 +17,7 @@ interface Vertex {
     uv?:UV,
     posProject?:Vector//冗余字段, 投影坐标, 变换计算时不要修改pos的值, 结果都存储在posTransform里
     posScreen?:Vector//冗余字段, 屏幕坐标
+    rhw?:number // 1/w
 }
 
 interface Camera {
@@ -188,9 +189,8 @@ class Matrix {
         this.setValue(0)  
       
         let n = -near
-        let f = -far
-        // let tan = Math.tan(fovy/2) // tan =t/near, aspect = r/t
-        let tn = -Math.tan(fovy/2) // t/n
+        let f = -far      
+        let tn = -Math.tan(fovy/2) // t/n, aspect = r/t
         let nt = 1 / tn  // = n/t
         let nr = nt / aspect // = n/r
 
@@ -231,20 +231,49 @@ class Matrix {
     }
 }
 
+class Texture {
+    public width:number
+    public height:number
+    public data:Array<Color> = []
+    protected tmp:Color = {r:0, g:0, b:0, a:0}
+    constructor(width:number, height:number) {
+        this.width = width
+        this.height = height
+    }
+    public setPixel(x:number, y:number, color:Color) {
+        let pos = y *this.width + x
+        this.data[pos] = color
+    }
+    public sample(uv:UV):Color {
+        //repeat sample
+        //use nearest sampler
+        let x = uv.u * this.width
+        let y = uv.v * this.height
+        x = Math.floor(x+0.5)
+        y = Math.floor(y+0.5)
+        if (x >= this.width) {
+            x = x % this.width
+        }
+        if (y >= this.height) {
+            y = y % this.height
+        }
+        let pos = y *this.width + x
+        let color = this.data[pos]
+        // if (color == null){
+        //     console.log(uv, pos, x, y)
+        // }
+        this.tmp.a = color.a
+        this.tmp.r = color.r
+        this.tmp.g = color.g
+        this.tmp.b = color.b
+        return this.tmp
+    }
+}
+
 class MathUtils {
 
     // public static linearInterpolateValue(value1:number, value2:number, t:number) {
     //     return (1-t) * value1 + t * value2
-    // }
-
-    // public static linearInterpolateVector(vec1:Vector, vec2:Vector, t:number, dst:Vector=null) {
-    //     if (dst == null){
-    //         dst = new Vector()
-    //     }
-    //     dst.x = MathUtils.linearInterpolateValue(vec1.x, vec2.x, t)
-    //     dst.y = MathUtils.linearInterpolateValue(vec1.y, vec2.y, t)
-    //     dst.z = MathUtils.linearInterpolateValue(vec1.z, vec2.z, t)
-    //     return dst
     // }
 
     public static isInsideViewVolumn(v:Vector){
@@ -268,14 +297,26 @@ class MathUtils {
     }
 
     public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {
-        dstColor.r = color1.r*a + color2.r*b + color3.r*c
-        dstColor.g = color1.g*a + color2.g*b + color3.g*c
-        dstColor.b = color1.b*a + color2.b*b + color3.b*c
-        dstColor.a = color1.a*a + color2.a*b + color3.a*c
+        dstColor.r = MathUtils.getInterpValue(color1.r, color2.r, color3.r, a, b, c)
+        dstColor.g = MathUtils.getInterpValue(color1.g, color2.g, color3.g, a, b, c)
+        dstColor.b = MathUtils.getInterpValue(color1.b, color2.b, color3.b, a, b, c)
+        dstColor.a = MathUtils.getInterpValue(color1.a, color2.a, color3.a, a, b, c)
     }
-
+    public static getInterpUV(uv1:UV, uv2:UV, uv3:UV, a:number, b:number, c:number, dstUV:UV) {
+        dstUV.u = MathUtils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c)
+        dstUV.v = MathUtils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c)
+    }
+    
     public static getInterpValue(v1:number, v2:number, v3:number,  a:number, b:number, c:number) {
         return v1*a + v2*b + v3*c
+    }
+
+    public static multiplyColor(color1:Color, color2:Color, dst:Color){
+        dst.r = color1.r * color2.r / 255
+        dst.g = color1.g * color2.g / 255
+        dst.b = color1.b * color2.b / 255
+        dst.a = color1.a * color2.a / 255
+        return dst
     }
 }
 
@@ -285,8 +326,10 @@ class Renderer {
     public width:number 
     public height:number
     public frameBuffer:Uint8Array = null
-    public zBuffer:Float32Array = null
-    public backgroundColor:Color = ColorEnums.clone(ColorEnums.BLACK)
+    protected zBuffer:Float32Array = null
+    protected backgroundColor:Color = ColorEnums.clone(ColorEnums.BLACK)
+    protected activeTexture:Texture = null
+
     protected camera:Camera = {
         view: new Matrix(),
         projection: new Matrix(),
@@ -378,7 +421,7 @@ class Renderer {
     protected barycentricFunc(vs:Array<Vector>, a:number, b:number, x:number, y:number):number{
         return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
     }
-
+// protected printed:boolean = false
     public drawTriangle2D(v0:Vertex, v1:Vertex, v2:Vertex) {
         //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
         //使用AABB来优化性能
@@ -389,11 +432,14 @@ class Renderer {
         let maxX = Math.ceil( Math.max(x0, x1, x2) )
         let minY = Math.floor( Math.min(y0, y1, y2) )
         let maxY = Math.ceil( Math.max(y0, y1, y2) )
-        let c:Color = ColorEnums.clone(ColorEnums.WHITE)
         let fBelta = this.barycentricFunc(vs, 2, 0, x1, y1)
         let fGama = this.barycentricFunc(vs, 0, 1, x2, y2)
         let fAlpha =  this.barycentricFunc(vs, 1, 2, x0, y0)
         let offScreenPointX = -1, offScreenPointY = -1
+        
+        let tempColor:Color = ColorEnums.clone(ColorEnums.WHITE)
+        let uv:UV = {u:0, v:0}
+
         for (let x=minX;x<=maxX;x++) {
             for (let y=minY;y<=maxY;y++) {
                 //F(a,b, x,y) = (ya-yb)*x + (xb-xa)*y + xa*yb - xb*ya, 
@@ -406,19 +452,50 @@ class Renderer {
                     &&  (belta > 0 || fBelta*this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) >0) 
                     &&  (gama > 0 || fGama*this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) >0) 
                       ){
-                        //inside the triangle , and the edge belongs to the triangle
-                        let z = MathUtils.getInterpValue(v0.posScreen.z, v1.posScreen.z, v2.posScreen.z, alpha, belta, gama)
+                        //在三角形内，边上的点也属于三角形
+                        //注意不能直接使用屏幕空间三角形的3个顶点属性直接插值，
+                        //在3D空间中顶点属性可以通过重心坐标线性插值，但是屏幕空间中已经不是线性插值，需要做透视矫正
+                        let rhw = MathUtils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
+                        //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
                         let zPos = this.width * y + x
-                        z = Math.abs(z)
-                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > z) {
-                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, alpha, belta, gama, c)
-                            this.setPixel(x, y, c)
-                            this.zBuffer[zPos] = z
+                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
+                            let w = 1 / (rhw != 0 ? rhw : 1)
+                            //反推3D空间中的重心坐标  a, b, c
+                            let a = alpha*w*v0.rhw
+                            let b = belta*w*v1.rhw
+                            let c = gama*w*v2.rhw
+                            
+                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+                            MathUtils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+                            // if (!this.printed){
+                            //     console.log("uv=",  uv.u,uv.v)
+                            // }
+                            // console.log("inter uv", v0.uv, v1.uv, v2.uv, a, b, c, uv)
+                            let finalColor = this.fragmentShading(x, y, tempColor, uv)
+                            if (finalColor.a > 0) {
+                                this.setPixel(x, y, finalColor)
+                                this.zBuffer[zPos] = rhw
+                            }
                         }
                     }
                 }
             }
         }
+        // this.printed = true
+
+    }
+
+    //片元着色
+    protected fragmentShading(x:number, y:number, color:Color, uv:UV) {
+        if (this.activeTexture != null) {
+            let tex = this.activeTexture.sample(uv)
+            return MathUtils.multiplyColor(tex, color, tex)
+        } 
+        return color
+    }
+
+    public setActiveTexture(texture:Texture) {
+        this.activeTexture = texture
     }
 
     public setPixel(x:number, y:number, color:Color) {
@@ -445,12 +522,12 @@ class Renderer {
             if (vert.posProject == null) {
                 vert.posProject = new Vector()
             }
-            vert.posWorld.transform(this.camera.view, vert.posProject)
-            console.log(vert.posProject)
+            vert.posWorld.transform(cameraTransform, vert.posProject)
+            // console.log(vert.posProject)
 
-            vert.posProject.transform(this.camera.projection, vert.posProject)
-            console.log(vert.posProject)
-
+            // vert.posProject.transform(this.camera.projection, vert.posProject)
+            // console.log(vert.posProject)
+            vert.rhw = 1/vert.posProject.w
             vert.posProject.homogenenize()
             if (MathUtils.isInsideViewVolumn(vert.posProject)){
                 if (vert.posScreen == null){
@@ -476,7 +553,7 @@ class Renderer {
     }
 
     protected setDefaultCamera() {
-        let eye = new Vector(2, 2, 3, 1)
+        let eye = new Vector(1.5, 0, 3, 1)
         let at = new Vector(0, 0, 0, 1)
         let up = new Vector(0, 1, 0, 1)
         let fovy = Math.PI / 2
@@ -523,20 +600,20 @@ export default class App {
         // this.renderder.drawLine(100,300, 100, 400, Color.WHITE)
         // this.renderder.drawTriangle({x:100, y:100, color:Color.RED}, {x:200, y:100, color:Color.BLUE},{x:150, y:150, color:Color.GREEN})
         
-        this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.RED}, {posScreen:new Vector(200,250), color:ColorEnums.BLUE},{posScreen:new Vector(150,350), color:ColorEnums.GREEN})
-        this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.GREEN}, {posScreen:new Vector(500,100), color:ColorEnums.BLUE}, {posScreen:new Vector(200,250), color:ColorEnums.RED})
+        // this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.RED}, {posScreen:new Vector(200,250), color:ColorEnums.BLUE},{posScreen:new Vector(150,350), color:ColorEnums.GREEN})
+        // this.renderder.drawTriangle2D({posScreen:new Vector(100,200), color:ColorEnums.GREEN}, {posScreen:new Vector(500,100), color:ColorEnums.BLUE}, {posScreen:new Vector(200,250), color:ColorEnums.RED})
 
         
         let va:Array<Vertex> = [
-            {posWorld:new Vector(-1,-1,1), color:ColorEnums.GREEN}, 
-            {posWorld:new Vector(1,-1,1), color:ColorEnums.BLUE}, 
-            {posWorld:new Vector(1,1,1), color:ColorEnums.RED}, 
-            {posWorld:new Vector(-1,1,1), color:ColorEnums.ORANGE}, 
+            {posWorld:new Vector(-1,-1,1), color:ColorEnums.GREEN, uv:{u:0, v:0}}, 
+            {posWorld:new Vector(1,-1,1), color:ColorEnums.BLUE, uv:{u:1, v:0}}, 
+            {posWorld:new Vector(1,1,1), color:ColorEnums.RED, uv:{u:1, v:1}}, 
+            {posWorld:new Vector(-1,1,1), color:ColorEnums.ORANGE, uv:{u:0, v:1}}, 
 
-            {posWorld:new Vector(-1,-1,-1), color:ColorEnums.GREEN}, 
-            {posWorld:new Vector(1,-1,-1), color:ColorEnums.BLUE}, 
-            {posWorld:new Vector(1,1,-1), color:ColorEnums.RED}, 
-            {posWorld:new Vector(-1,1,-1), color:ColorEnums.ORANGE}, 
+            {posWorld:new Vector(-1,-1,-1), color:ColorEnums.GREEN, uv:{u:0, v:0}}, 
+            {posWorld:new Vector(1,-1,-1), color:ColorEnums.BLUE, uv:{u:1, v:0}}, 
+            {posWorld:new Vector(1,1,-1), color:ColorEnums.RED, uv:{u:1, v:1}}, 
+            {posWorld:new Vector(-1,1,-1), color:ColorEnums.ORANGE, uv:{u:0, v:1}}, 
 
         ] //立方体8个顶点
         let elements = [
@@ -554,9 +631,28 @@ export default class App {
             4, 0, 3
 
         ] //24个三角形,立方体外表面
+
+        this.renderder.setActiveTexture(this.createTexture())
         this.renderder.drawElements(va, elements)
 
         this.flush()
+    }
+
+    protected createTexture(){
+        let texture = new Texture(256, 256)
+        for (let i=0;i<256;i++) {
+            for (let j=0;j<256;j++) {
+                let x = Math.floor(i/32)
+                let y = Math.floor(j/32)
+                if ((x+y) % 2 == 0) {
+                    texture.setPixel(j, i, ColorEnums.BLUE)
+                } else {
+                    texture.setPixel(j, i, ColorEnums.WHITE)
+                }
+            }
+        }
+ 
+        return texture
     }
 
 

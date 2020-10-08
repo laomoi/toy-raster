@@ -149,15 +149,15 @@ var Matrix = (function () {
     };
     Matrix.prototype.setPerspective = function (fovy, aspect, near, far) {
         this.setValue(0);
-        var n = Math.abs(near);
-        var f = Math.abs(far);
-        var tan = Math.tan(fovy / 2);
-        var nt = 1 / tan;
+        var n = -near;
+        var f = -far;
+        var tn = -Math.tan(fovy / 2);
+        var nt = 1 / tn;
         var nr = nt / aspect;
         this.m[0][0] = nr;
         this.m[1][1] = nt;
         this.m[2][2] = (n + f) / (n - f);
-        this.m[3][2] = 2 * f * n / (n - f);
+        this.m[3][2] = 2 * f * n / (f - n);
         this.m[2][3] = 1;
     };
     Matrix.prototype.setLookAt = function (eye, at, up) {
@@ -385,7 +385,7 @@ var Renderer = (function () {
         }
     };
     Renderer.prototype.setDefaultCamera = function () {
-        var eye = new Vector(0.5, 1.5, 3, 1);
+        var eye = new Vector(0, 0, 3, 1);
         var at = new Vector(0, 0, 0, 1);
         var up = new Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;

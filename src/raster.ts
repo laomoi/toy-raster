@@ -183,18 +183,21 @@ class Matrix {
         }
     }
 
+    //near far should be > 0
     public setPerspective(fovy:number, aspect:number, near:number, far:number){
         this.setValue(0)  
-        let n = Math.abs(near)
-        let f = Math.abs(far)
-        let tan = Math.tan(fovy/2) // tan =t/n, aspect = r/t
-        let nt = 1 / tan  // = n/t
+      
+        let n = -near
+        let f = -far
+        // let tan = Math.tan(fovy/2) // tan =t/near, aspect = r/t
+        let tn = -Math.tan(fovy/2) // t/n
+        let nt = 1 / tn  // = n/t
         let nr = nt / aspect // = n/r
 
         this.m[0][0] = nr  
         this.m[1][1] = nt
         this.m[2][2] = (n+f)/(n-f)
-        this.m[3][2] = 2*f*n/(n-f)
+        this.m[3][2] = 2*f*n/(f-n)
         this.m[2][3] = 1
     }
 
@@ -473,7 +476,7 @@ class Renderer {
     }
 
     protected setDefaultCamera() {
-        let eye = new Vector(0.5, 1.5, 3, 1)
+        let eye = new Vector(0, 0, 3, 1)
         let at = new Vector(0, 0, 0, 1)
         let up = new Vector(0, 1, 0, 1)
         let fovy = Math.PI / 2
@@ -527,31 +530,26 @@ export default class App {
         let va:Array<Vertex> = [
             {posWorld:new Vector(-1,-1,1), color:ColorEnums.GREEN}, 
             {posWorld:new Vector(1,-1,1), color:ColorEnums.BLUE}, 
-            {posWorld:new Vector(1,1,1),color:ColorEnums.RED}, 
+            {posWorld:new Vector(1,1,1), color:ColorEnums.RED}, 
             {posWorld:new Vector(-1,1,1), color:ColorEnums.ORANGE}, 
 
             {posWorld:new Vector(-1,-1,-1), color:ColorEnums.GREEN}, 
             {posWorld:new Vector(1,-1,-1), color:ColorEnums.BLUE}, 
-            {posWorld:new Vector(1,1,-1),color:ColorEnums.RED}, 
+            {posWorld:new Vector(1,1,-1), color:ColorEnums.RED}, 
             {posWorld:new Vector(-1,1,-1), color:ColorEnums.ORANGE}, 
 
         ] //立方体8个顶点
         let elements = [
             0, 1, 2,  //front
             2, 3, 1,
-
             7, 6, 5,  //back
             5, 4, 7,
-
             0, 4, 5,
             5, 1, 0,
-
             1, 5, 6,
             6, 2, 1,
-            
             2, 6, 7,
             7, 3, 2,
-
             3, 7, 4,
             4, 0, 3
 

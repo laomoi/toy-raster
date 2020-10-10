@@ -1,0 +1,13 @@
+{
+  "name": "raster-toy",
+  "version": "1.0.0",
+  "description": "raster-toy",
+  "author": "laomoi",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "tsc": "^1.20150623.0",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12"
+  },
+  "dependencies": {}
+}

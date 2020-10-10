@@ -1,17 +1,200 @@
-var ColorEnums = (function () {
-    function ColorEnums() {
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId]) {
+/******/ 			return installedModules[moduleId].exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			i: moduleId,
+/******/ 			l: false,
+/******/ 			exports: {}
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Flag the module as loaded
+/******/ 		module.l = true;
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/******/
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+/******/
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+/******/
+/******/ 	// define getter function for harmony exports
+/******/ 	__webpack_require__.d = function(exports, name, getter) {
+/******/ 		if(!__webpack_require__.o(exports, name)) {
+/******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
+/******/ 		}
+/******/ 	};
+/******/
+/******/ 	// define __esModule on exports
+/******/ 	__webpack_require__.r = function(exports) {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__webpack_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = __webpack_require__(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+/******/ 		var ns = Object.create(null);
+/******/ 		__webpack_require__.r(ns);
+/******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+/******/ 		if(mode & 2 && typeof value != 'string') for(var key in value) __webpack_require__.d(ns, key, function(key) { return value[key]; }.bind(null, key));
+/******/ 		return ns;
+/******/ 	};
+/******/
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__webpack_require__.n = function(module) {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			function getDefault() { return module['default']; } :
+/******/ 			function getModuleExports() { return module; };
+/******/ 		__webpack_require__.d(getter, 'a', getter);
+/******/ 		return getter;
+/******/ 	};
+/******/
+/******/ 	// Object.prototype.hasOwnProperty.call
+/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
+/******/
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+/******/
+/******/
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(__webpack_require__.s = "./js/main.js");
+/******/ })
+/************************************************************************/
+/******/ ({
+
+/***/ "./js/blitter/webgl-blitter.js":
+/*!*************************************!*\
+  !*** ./js/blitter/webgl-blitter.js ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var WebGLBlitter = (function () {
+    function WebGLBlitter(gl) {
+        this.gl = gl;
+        this.initShader();
+        this.initTexture();
+        this.initGeometry();
     }
-    ColorEnums.clone = function (color) {
-        return { r: color.r, g: color.g, b: color.b, a: color.a };
+    WebGLBlitter.prototype.initTexture = function () {
+        var gl = this.gl;
+        this.canvasTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.canvasTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.bindTexture(gl.TEXTURE_2D, null);
     };
-    ColorEnums.BLACK = { r: 0, g: 0, b: 0, a: 255 };
-    ColorEnums.WHITE = { r: 255, g: 255, b: 255, a: 255 };
-    ColorEnums.RED = { r: 255, g: 0, b: 0, a: 255 };
-    ColorEnums.BLUE = { r: 0, g: 0, b: 255, a: 255 };
-    ColorEnums.GREEN = { r: 0, g: 255, b: 0, a: 255 };
-    ColorEnums.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
-    return ColorEnums;
+    WebGLBlitter.prototype.initShader = function () {
+        var gl = this.gl;
+        var vertexShaderSource = "attribute vec4 a_Position;" +
+            "attribute vec2 a_TexCoord;" +
+            "varying vec2 v_TexCoord;" +
+            "void main(){" +
+            "gl_Position = a_Position;" +
+            "v_TexCoord = a_TexCoord;" +
+            "}";
+        var fragmentShaderSource = "precision mediump float;" +
+            "    uniform sampler2D u_Sampler;" +
+            "    varying vec2 v_TexCoord;" +
+            "    void main(){" +
+            "        gl_FragColor = texture2D(u_Sampler, v_TexCoord);" +
+            "}";
+        var vertShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertShader, vertexShaderSource);
+        gl.compileShader(vertShader);
+        var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragShader, fragmentShaderSource);
+        gl.compileShader(fragShader);
+        this.shaderProgram = gl.createProgram();
+        gl.attachShader(this.shaderProgram, vertShader);
+        gl.attachShader(this.shaderProgram, fragShader);
+        gl.linkProgram(this.shaderProgram);
+        this.u_Sampler = gl.getUniformLocation(this.shaderProgram, "u_Sampler");
+    };
+    WebGLBlitter.prototype.initGeometry = function () {
+        var gl = this.gl;
+        var vertexs = new Float32Array([
+            -1, 1, 0.0, 0.0, 1.0,
+            -1, -1, 0.0, 0.0, 0.0,
+            1, 1, 0.0, 1.0, 1.0,
+            1, -1, 0.0, 1.0, 0.0]);
+        this.vertexsBuffer = gl.createBuffer();
+        if (this.vertexsBuffer === null) {
+            console.log("vertexsBuffer is null");
+            return false;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexsBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexs, gl.STATIC_DRAW);
+        var a_Position = gl.getAttribLocation(this.shaderProgram, "a_Position");
+        if (a_Position < 0) {
+            console.log("a_Position < 0");
+            return false;
+        }
+        var a_TexCoord = gl.getAttribLocation(this.shaderProgram, "a_TexCoord");
+        if (a_TexCoord < 0) {
+            console.log("a_TexCoord < 0");
+            return false;
+        }
+        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, vertexs.BYTES_PER_ELEMENT * 5, 0);
+        gl.enableVertexAttribArray(a_Position);
+        gl.vertexAttribPointer(a_TexCoord, 2, gl.FLOAT, false, vertexs.BYTES_PER_ELEMENT * 5, vertexs.BYTES_PER_ELEMENT * 3);
+        gl.enableVertexAttribArray(a_TexCoord);
+    };
+    WebGLBlitter.prototype.renderCanvas = function () {
+        var gl = this.gl;
+        gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(this.shaderProgram);
+        gl.uniform1i(this.u_Sampler, 0);
+        gl.activeTexture(this.gl.TEXTURE0);
+        gl.bindTexture(this.gl.TEXTURE_2D, this.canvasTexture);
+        gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    };
+    WebGLBlitter.prototype.blitPixels = function (width, height, pixels) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.canvasTexture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+        this.renderCanvas();
+    };
+    return WebGLBlitter;
 })();
+exports.WebGLBlitter = WebGLBlitter;
+//# sourceMappingURL=webgl-blitter.js.map
+
+/***/ }),
+
+/***/ "./js/engine/data.js":
+/*!***************************!*\
+  !*** ./js/engine/data.js ***!
+  \***************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
 var Vector = (function () {
     function Vector(x, y, z, w) {
         if (x === void 0) { x = 0; }
@@ -111,6 +294,7 @@ var Vector = (function () {
     };
     return Vector;
 })();
+exports.Vector = Vector;
 var Matrix = (function () {
     function Matrix() {
         this.m = [];
@@ -182,6 +366,22 @@ var Matrix = (function () {
     };
     return Matrix;
 })();
+exports.Matrix = Matrix;
+var ColorEnums = (function () {
+    function ColorEnums() {
+    }
+    ColorEnums.clone = function (color) {
+        return { r: color.r, g: color.g, b: color.b, a: color.a };
+    };
+    ColorEnums.BLACK = { r: 0, g: 0, b: 0, a: 255 };
+    ColorEnums.WHITE = { r: 255, g: 255, b: 255, a: 255 };
+    ColorEnums.RED = { r: 255, g: 0, b: 0, a: 255 };
+    ColorEnums.BLUE = { r: 0, g: 0, b: 255, a: 255 };
+    ColorEnums.GREEN = { r: 0, g: 255, b: 0, a: 255 };
+    ColorEnums.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
+    return ColorEnums;
+})();
+exports.ColorEnums = ColorEnums;
 var Texture = (function () {
     function Texture(width, height) {
         this.data = [];
@@ -214,6 +414,19 @@ var Texture = (function () {
     };
     return Texture;
 })();
+exports.Texture = Texture;
+//# sourceMappingURL=data.js.map
+
+/***/ }),
+
+/***/ "./js/engine/raster.js":
+/*!*****************************!*\
+  !*** ./js/engine/raster.js ***!
+  \*****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var data_1 = __webpack_require__(/*! ./data */ "./js/engine/data.js");
 var MathUtils = (function () {
     function MathUtils() {
     }
@@ -257,16 +470,16 @@ var MathUtils = (function () {
     };
     return MathUtils;
 })();
-var Renderer = (function () {
-    function Renderer(width, height) {
+var Raster = (function () {
+    function Raster(width, height) {
         this.frameBuffer = null;
         this.zBuffer = null;
-        this.backgroundColor = ColorEnums.clone(ColorEnums.BLACK);
+        this.backgroundColor = data_1.ColorEnums.clone(data_1.ColorEnums.BLACK);
         this.activeTexture = null;
         this.camera = {
-            view: new Matrix(),
-            projection: new Matrix(),
-            vp: new Matrix()
+            view: new data_1.Matrix(),
+            projection: new data_1.Matrix(),
+            vp: new data_1.Matrix()
         };
         this.width = width;
         this.height = height;
@@ -274,7 +487,7 @@ var Renderer = (function () {
         this.zBuffer = new Float32Array(width * height);
         this.setDefaultCamera();
     }
-    Renderer.prototype.clear = function () {
+    Raster.prototype.clear = function () {
         for (var l = 0; l < this.frameBuffer.length; l += 4) {
             this.frameBuffer[l] = this.backgroundColor.r;
             this.frameBuffer[l + 1] = this.backgroundColor.g;
@@ -285,7 +498,7 @@ var Renderer = (function () {
             this.zBuffer[l] = NaN;
         }
     };
-    Renderer.prototype.drawLine = function (x0, y0, x1, y1, color) {
+    Raster.prototype.drawLine = function (x0, y0, x1, y1, color) {
         if (x0 == x1) {
             var dir = y0 < y1 ? 1 : -1;
             for (var y = y0; y != y1; y += dir) {
@@ -345,10 +558,10 @@ var Renderer = (function () {
             }
         }
     };
-    Renderer.prototype.barycentricFunc = function (vs, a, b, x, y) {
+    Raster.prototype.barycentricFunc = function (vs, a, b, x, y) {
         return ((vs[a].y - vs[b].y) * x + (vs[b].x - vs[a].x) * y + vs[a].x * vs[b].y - vs[b].x * vs[a].y);
     };
-    Renderer.prototype.drawTriangle2D = function (v0, v1, v2) {
+    Raster.prototype.drawTriangle2D = function (v0, v1, v2) {
         var vs = [v0.posScreen, v1.posScreen, v2.posScreen];
         var x0 = vs[0].x, x1 = vs[1].x, x2 = vs[2].x, y0 = vs[0].y, y1 = vs[1].y, y2 = vs[2].y;
         var minX = Math.floor(Math.min(x0, x1, x2));
@@ -359,7 +572,7 @@ var Renderer = (function () {
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
         var offScreenPointX = -1, offScreenPointY = -1;
-        var tempColor = ColorEnums.clone(ColorEnums.WHITE);
+        var tempColor = data_1.ColorEnums.clone(data_1.ColorEnums.WHITE);
         var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
@@ -390,17 +603,17 @@ var Renderer = (function () {
             }
         }
     };
-    Renderer.prototype.fragmentShading = function (x, y, color, uv) {
+    Raster.prototype.fragmentShading = function (x, y, color, uv) {
         if (this.activeTexture != null) {
             var tex = this.activeTexture.sample(uv);
             return MathUtils.multiplyColor(tex, color, tex);
         }
         return color;
     };
-    Renderer.prototype.setActiveTexture = function (texture) {
+    Raster.prototype.setActiveTexture = function (texture) {
         this.activeTexture = texture;
     };
-    Renderer.prototype.setPixel = function (x, y, color) {
+    Raster.prototype.setPixel = function (x, y, color) {
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {
             var pstart = (this.width * y + x) * 4;
             this.frameBuffer[pstart] = color.r;
@@ -409,7 +622,7 @@ var Renderer = (function () {
             this.frameBuffer[pstart + 3] = color.a;
         }
     };
-    Renderer.prototype.drawElements = function (va, elements) {
+    Raster.prototype.drawElements = function (va, elements) {
         if (elements.length % 3 != 0) {
             return;
         }
@@ -417,14 +630,14 @@ var Renderer = (function () {
         for (var _i = 0; _i < va.length; _i++) {
             var vert = va[_i];
             if (vert.posProject == null) {
-                vert.posProject = new Vector();
+                vert.posProject = new data_1.Vector();
             }
             vert.posWorld.transform(cameraTransform, vert.posProject);
             vert.rhw = 1 / vert.posProject.w;
             vert.posProject.homogenenize();
             if (MathUtils.isInsideViewVolumn(vert.posProject)) {
                 if (vert.posScreen == null) {
-                    vert.posScreen = new Vector();
+                    vert.posScreen = new data_1.Vector();
                 }
                 MathUtils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height);
             }
@@ -444,28 +657,43 @@ var Renderer = (function () {
             }
         }
     };
-    Renderer.prototype.setDefaultCamera = function () {
-        var eye = new Vector(1.5, 0, 3, 1);
-        var at = new Vector(0, 0, 0, 1);
-        var up = new Vector(0, 1, 0, 1);
+    Raster.prototype.setDefaultCamera = function () {
+        var eye = new data_1.Vector(1.5, 0, 3, 1);
+        var at = new data_1.Vector(0, 0, 0, 1);
+        var up = new data_1.Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
         var aspect = this.width / this.height;
         var near = 1;
         var far = 500;
         this.setCamera(eye, at, up, fovy, aspect, near, far);
     };
-    Renderer.prototype.setCamera = function (eye, lookAt, up, fovy, aspect, near, far) {
+    Raster.prototype.setCamera = function (eye, lookAt, up, fovy, aspect, near, far) {
         this.camera.view.setLookAt(eye, lookAt, up);
         this.camera.projection.setPerspective(fovy, aspect, near, far);
         this.camera.vp = this.camera.view.multiply(this.camera.projection);
     };
-    return Renderer;
+    return Raster;
 })();
+exports["default"] = Raster;
+//# sourceMappingURL=raster.js.map
+
+/***/ }),
+
+/***/ "./js/main.js":
+/*!********************!*\
+  !*** ./js/main.js ***!
+  \********************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var webgl_blitter_1 = __webpack_require__(/*! ./blitter/webgl-blitter */ "./js/blitter/webgl-blitter.js");
+var data_1 = __webpack_require__(/*! ./engine/data */ "./js/engine/data.js");
+var raster_1 = __webpack_require__(/*! ./engine/raster */ "./js/engine/raster.js");
 var App = (function () {
-    function App(canvasWidth, canvasHeight, blitCallback) {
-        this.bitBlit = null;
-        this.renderder = new Renderer(canvasWidth, canvasHeight);
-        this.bitBlit = blitCallback;
+    function App(canvasWidth, canvasHeight, gl) {
+        this.blitter = null;
+        this.renderder = new raster_1["default"](canvasWidth, canvasHeight);
+        this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
         var self = this;
         var wrapMainLoop = function () {
             self.mainLoop();
@@ -476,14 +704,14 @@ var App = (function () {
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new Vector(-1, -1, 1), color: ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new Vector(1, -1, 1), color: ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new Vector(1, 1, 1), color: ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new Vector(-1, 1, 1), color: ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new Vector(-1, -1, -1), color: ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new Vector(1, -1, -1), color: ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new Vector(1, 1, -1), color: ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new Vector(-1, 1, -1), color: ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new data_1.Vector(-1, -1, 1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new data_1.Vector(1, -1, 1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new data_1.Vector(1, 1, 1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new data_1.Vector(-1, 1, 1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new data_1.Vector(-1, -1, -1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new data_1.Vector(1, -1, -1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new data_1.Vector(1, 1, -1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new data_1.Vector(-1, 1, -1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -504,25 +732,39 @@ var App = (function () {
         this.flush();
     };
     App.prototype.createTexture = function () {
-        var texture = new Texture(256, 256);
+        var texture = new data_1.Texture(256, 256);
         for (var i = 0; i < 256; i++) {
             for (var j = 0; j < 256; j++) {
                 var x = Math.floor(i / 32);
                 var y = Math.floor(j / 32);
                 if ((x + y) % 2 == 0) {
-                    texture.setPixel(j, i, ColorEnums.BLUE);
+                    texture.setPixel(j, i, data_1.ColorEnums.BLUE);
                 }
                 else {
-                    texture.setPixel(j, i, ColorEnums.WHITE);
+                    texture.setPixel(j, i, data_1.ColorEnums.WHITE);
                 }
             }
         }
         return texture;
     };
     App.prototype.flush = function () {
-        this.bitBlit(this.renderder.width, this.renderder.height, this.renderder.frameBuffer);
+        this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.frameBuffer);
     };
     return App;
 })();
 exports["default"] = App;
-//# sourceMappingURL=raster.js.map
+window.onload = function () {
+    var canvas = document.getElementById('canvas');
+    var gl = canvas.getContext('webgl');
+    if (!gl) {
+        console.log("WEBGL FAILED");
+        return;
+    }
+    var app = new App(canvas.width, canvas.height, gl);
+};
+//# sourceMappingURL=main.js.map
+
+/***/ })
+
+/******/ });
+//# sourceMappingURL=bundle.js.map

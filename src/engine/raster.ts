@@ -1,55 +1,16 @@
-import { Vector, Color, UV, ColorEnums, Texture, Camera, Matrix, Vertex } from "./data"
+import { Matrix } from "./math/matrix"
+import { Vector } from "./math/vector"
+import { Color, ColorEnums } from "./mesh/color"
+import Texture, { UV } from "./mesh/texture"
+import { Vertex } from "./mesh/vertex"
+import Utils from "./utils"
 
-class MathUtils {
 
-    // public static linearInterpolateValue(value1:number, value2:number, t:number) {
-    //     return (1-t) * value1 + t * value2
-    // }
-
-    public static isInsideViewVolumn(v:Vector){
-        if (v.x < -1 || v.x > 1){
-            return false
-        }
-        if (v.y < -1 || v.y > 1){
-            return false
-        }
-        if (v.z < -1 || v.z > 1){
-            return false
-        }
-        return true
-    }
-
-    public static convertToScreenPos(v:Vector, dst:Vector, width:number, height:number){
-        dst.x = (v.x + 1)/2 * width
-        dst.y = (v.y + 1)/2 * height
-        dst.z = v.z
-        return dst
-    }
-
-    public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {
-        dstColor.r = MathUtils.getInterpValue(color1.r, color2.r, color3.r, a, b, c)
-        dstColor.g = MathUtils.getInterpValue(color1.g, color2.g, color3.g, a, b, c)
-        dstColor.b = MathUtils.getInterpValue(color1.b, color2.b, color3.b, a, b, c)
-        dstColor.a = MathUtils.getInterpValue(color1.a, color2.a, color3.a, a, b, c)
-    }
-    public static getInterpUV(uv1:UV, uv2:UV, uv3:UV, a:number, b:number, c:number, dstUV:UV) {
-        dstUV.u = MathUtils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c)
-        dstUV.v = MathUtils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c)
-    }
-    
-    public static getInterpValue(v1:number, v2:number, v3:number,  a:number, b:number, c:number) {
-        return v1*a + v2*b + v3*c
-    }
-
-    public static multiplyColor(color1:Color, color2:Color, dst:Color){
-        dst.r = color1.r * color2.r / 255
-        dst.g = color1.g * color2.g / 255
-        dst.b = color1.b * color2.b / 255
-        dst.a = color1.a * color2.a / 255
-        return dst
-    }
+export interface Camera {
+    view: Matrix,
+    projection:Matrix,
+    vp:Matrix //projection*view
 }
-
 
 
 export default class Raster {
@@ -185,7 +146,7 @@ export default class Raster {
                         //在三角形内，边上的点也属于三角形
                         //注意不能直接使用屏幕空间三角形的3个顶点属性直接插值，
                         //在3D空间中顶点属性可以通过重心坐标线性插值，但是屏幕空间中已经不是线性插值，需要做透视矫正
-                        let rhw = MathUtils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
+                        let rhw = Utils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
                         //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
                         let zPos = this.width * y + x
                         if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
@@ -195,8 +156,8 @@ export default class Raster {
                             let b = belta*w*v1.rhw
                             let c = gama*w*v2.rhw
                             
-                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
-                            MathUtils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+                            Utils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+                            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
                             // if (!this.printed){
                             //     console.log("uv=",  uv.u,uv.v)
                             // }
@@ -219,7 +180,7 @@ export default class Raster {
     protected fragmentShading(x:number, y:number, color:Color, uv:UV) {
         if (this.activeTexture != null) {
             let tex = this.activeTexture.sample(uv)
-            return MathUtils.multiplyColor(tex, color, tex)
+            return Utils.multiplyColor(tex, color, tex)
         } 
         return color
     }
@@ -255,11 +216,11 @@ export default class Raster {
             vert.posWorld.transform(cameraTransform, vert.posProject)
             vert.rhw = 1/vert.posProject.w //w等同于投影前的视图坐标的z
             vert.posProject.homogenenize()
-            if (MathUtils.isInsideViewVolumn(vert.posProject)){
+            if (Utils.isInsideViewVolumn(vert.posProject)){
                 if (vert.posScreen == null){
                     vert.posScreen = new Vector()
                 }
-                MathUtils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
+                Utils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
             }
         }
         for (let i=0;i<elements.length;i+=3) {
@@ -267,7 +228,7 @@ export default class Raster {
             let culling = false
             for (let p of trianglePoints) {
                 //view volumn culling
-                if (!MathUtils.isInsideViewVolumn(p.posProject) ) {
+                if (!Utils.isInsideViewVolumn(p.posProject) ) {
                     culling = true
                     break;
                 }

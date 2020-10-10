@@ -1,5 +1,7 @@
 var webgl_blitter_1 = require("./blitter/webgl-blitter");
-var data_1 = require("./engine/data");
+var vector_1 = require("./engine/math/vector");
+var color_1 = require("./engine/mesh/color");
+var texture_1 = require("./engine/mesh/texture");
 var raster_1 = require("./engine/raster");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
@@ -16,14 +18,14 @@ var App = (function () {
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new data_1.Vector(-1, -1, 1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new data_1.Vector(1, -1, 1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new data_1.Vector(1, 1, 1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new data_1.Vector(-1, 1, 1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new data_1.Vector(-1, -1, -1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new data_1.Vector(1, -1, -1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new data_1.Vector(1, 1, -1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new data_1.Vector(-1, 1, -1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -44,16 +46,16 @@ var App = (function () {
         this.flush();
     };
     App.prototype.createTexture = function () {
-        var texture = new data_1.Texture(256, 256);
+        var texture = new texture_1["default"](256, 256);
         for (var i = 0; i < 256; i++) {
             for (var j = 0; j < 256; j++) {
                 var x = Math.floor(i / 32);
                 var y = Math.floor(j / 32);
                 if ((x + y) % 2 == 0) {
-                    texture.setPixel(j, i, data_1.ColorEnums.BLUE);
+                    texture.setPixel(j, i, color_1.ColorEnums.BLUE);
                 }
                 else {
-                    texture.setPixel(j, i, data_1.ColorEnums.WHITE);
+                    texture.setPixel(j, i, color_1.ColorEnums.WHITE);
                 }
             }
         }

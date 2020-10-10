@@ -1,5 +1,8 @@
 import { WebGLBlitter } from "./blitter/webgl-blitter"
-import { Vertex, Vector, ColorEnums, Texture } from "./engine/data"
+import { Vector } from "./engine/math/vector"
+import { ColorEnums } from "./engine/mesh/color"
+import Texture from "./engine/mesh/texture"
+import { Vertex } from "./engine/mesh/vertex"
 import Raster from "./engine/raster"
 
 export default class App {

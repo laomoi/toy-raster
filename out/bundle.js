@@ -188,10 +188,93 @@ exports.WebGLBlitter = WebGLBlitter;
 
 /***/ }),
 
-/***/ "./js/engine/data.js":
-/*!***************************!*\
-  !*** ./js/engine/data.js ***!
-  \***************************/
+/***/ "./js/engine/math/matrix.js":
+/*!**********************************!*\
+  !*** ./js/engine/math/matrix.js ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var Matrix = (function () {
+    function Matrix() {
+        this.m = [];
+        for (var i = 0; i < 4; i++) {
+            var col = new Float32Array(4);
+            this.m.push(col);
+        }
+        this.identify();
+    }
+    Matrix.prototype.identify = function () {
+        this.setValue(0);
+        this.m[0][0] = this.m[1][1] = this.m[2][2] = this.m[3][3] = 1;
+    };
+    Matrix.prototype.multiply = function (t, dst) {
+        if (dst === void 0) { dst = null; }
+        if (dst == null) {
+            dst = new Matrix();
+        }
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                dst.m[j][i] =
+                    this.m[j][0] * t.m[0][i]
+                        + this.m[j][1] * t.m[1][i]
+                        + this.m[j][2] * t.m[2][i]
+                        + this.m[j][3] * t.m[3][i];
+            }
+        }
+        return dst;
+    };
+    Matrix.prototype.setValue = function (val) {
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                this.m[j][i] = val;
+            }
+        }
+    };
+    Matrix.prototype.setPerspective = function (fovy, aspect, near, far) {
+        this.setValue(0);
+        var n = -near;
+        var f = -far;
+        var tn = -Math.tan(fovy / 2);
+        var nt = 1 / tn;
+        var nr = nt / aspect;
+        this.m[0][0] = nr;
+        this.m[1][1] = nt;
+        this.m[2][2] = (n + f) / (n - f);
+        this.m[3][2] = 2 * f * n / (f - n);
+        this.m[2][3] = 1;
+    };
+    Matrix.prototype.setLookAt = function (eye, at, up) {
+        var w = at.sub(eye).normalize().reverse();
+        var u = up.cross(w).normalize();
+        var v = w.cross(u);
+        this.setValue(0);
+        this.m[0][0] = u.x;
+        this.m[1][0] = u.y;
+        this.m[2][0] = u.z;
+        this.m[0][1] = v.x;
+        this.m[1][1] = v.y;
+        this.m[2][1] = v.z;
+        this.m[0][2] = w.x;
+        this.m[1][2] = w.y;
+        this.m[2][2] = w.z;
+        this.m[3][3] = 1;
+        var tEye = eye.reverse();
+        this.m[3][0] = u.dot(tEye);
+        this.m[3][1] = v.dot(tEye);
+        this.m[3][2] = w.dot(tEye);
+    };
+    return Matrix;
+})();
+exports.Matrix = Matrix;
+//# sourceMappingURL=matrix.js.map
+
+/***/ }),
+
+/***/ "./js/engine/math/vector.js":
+/*!**********************************!*\
+  !*** ./js/engine/math/vector.js ***!
+  \**********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -295,78 +378,17 @@ var Vector = (function () {
     return Vector;
 })();
 exports.Vector = Vector;
-var Matrix = (function () {
-    function Matrix() {
-        this.m = [];
-        for (var i = 0; i < 4; i++) {
-            var col = new Float32Array(4);
-            this.m.push(col);
-        }
-        this.identify();
-    }
-    Matrix.prototype.identify = function () {
-        this.setValue(0);
-        this.m[0][0] = this.m[1][1] = this.m[2][2] = this.m[3][3] = 1;
-    };
-    Matrix.prototype.multiply = function (t, dst) {
-        if (dst === void 0) { dst = null; }
-        if (dst == null) {
-            dst = new Matrix();
-        }
-        for (var i = 0; i < 4; i++) {
-            for (var j = 0; j < 4; j++) {
-                dst.m[j][i] =
-                    this.m[j][0] * t.m[0][i]
-                        + this.m[j][1] * t.m[1][i]
-                        + this.m[j][2] * t.m[2][i]
-                        + this.m[j][3] * t.m[3][i];
-            }
-        }
-        return dst;
-    };
-    Matrix.prototype.setValue = function (val) {
-        for (var i = 0; i < 4; i++) {
-            for (var j = 0; j < 4; j++) {
-                this.m[j][i] = val;
-            }
-        }
-    };
-    Matrix.prototype.setPerspective = function (fovy, aspect, near, far) {
-        this.setValue(0);
-        var n = -near;
-        var f = -far;
-        var tn = -Math.tan(fovy / 2);
-        var nt = 1 / tn;
-        var nr = nt / aspect;
-        this.m[0][0] = nr;
-        this.m[1][1] = nt;
-        this.m[2][2] = (n + f) / (n - f);
-        this.m[3][2] = 2 * f * n / (f - n);
-        this.m[2][3] = 1;
-    };
-    Matrix.prototype.setLookAt = function (eye, at, up) {
-        var w = at.sub(eye).normalize().reverse();
-        var u = up.cross(w).normalize();
-        var v = w.cross(u);
-        this.setValue(0);
-        this.m[0][0] = u.x;
-        this.m[1][0] = u.y;
-        this.m[2][0] = u.z;
-        this.m[0][1] = v.x;
-        this.m[1][1] = v.y;
-        this.m[2][1] = v.z;
-        this.m[0][2] = w.x;
-        this.m[1][2] = w.y;
-        this.m[2][2] = w.z;
-        this.m[3][3] = 1;
-        var tEye = eye.reverse();
-        this.m[3][0] = u.dot(tEye);
-        this.m[3][1] = v.dot(tEye);
-        this.m[3][2] = w.dot(tEye);
-    };
-    return Matrix;
-})();
-exports.Matrix = Matrix;
+//# sourceMappingURL=vector.js.map
+
+/***/ }),
+
+/***/ "./js/engine/mesh/color.js":
+/*!*********************************!*\
+  !*** ./js/engine/mesh/color.js ***!
+  \*********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
 var ColorEnums = (function () {
     function ColorEnums() {
     }
@@ -382,6 +404,17 @@ var ColorEnums = (function () {
     return ColorEnums;
 })();
 exports.ColorEnums = ColorEnums;
+//# sourceMappingURL=color.js.map
+
+/***/ }),
+
+/***/ "./js/engine/mesh/texture.js":
+/*!***********************************!*\
+  !*** ./js/engine/mesh/texture.js ***!
+  \***********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
 var Texture = (function () {
     function Texture(width, height) {
         this.data = [];
@@ -414,8 +447,8 @@ var Texture = (function () {
     };
     return Texture;
 })();
-exports.Texture = Texture;
-//# sourceMappingURL=data.js.map
+exports["default"] = Texture;
+//# sourceMappingURL=texture.js.map
 
 /***/ }),
 
@@ -426,60 +459,20 @@ exports.Texture = Texture;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-var data_1 = __webpack_require__(/*! ./data */ "./js/engine/data.js");
-var MathUtils = (function () {
-    function MathUtils() {
-    }
-    MathUtils.isInsideViewVolumn = function (v) {
-        if (v.x < -1 || v.x > 1) {
-            return false;
-        }
-        if (v.y < -1 || v.y > 1) {
-            return false;
-        }
-        if (v.z < -1 || v.z > 1) {
-            return false;
-        }
-        return true;
-    };
-    MathUtils.convertToScreenPos = function (v, dst, width, height) {
-        dst.x = (v.x + 1) / 2 * width;
-        dst.y = (v.y + 1) / 2 * height;
-        dst.z = v.z;
-        return dst;
-    };
-    MathUtils.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
-        dstColor.r = MathUtils.getInterpValue(color1.r, color2.r, color3.r, a, b, c);
-        dstColor.g = MathUtils.getInterpValue(color1.g, color2.g, color3.g, a, b, c);
-        dstColor.b = MathUtils.getInterpValue(color1.b, color2.b, color3.b, a, b, c);
-        dstColor.a = MathUtils.getInterpValue(color1.a, color2.a, color3.a, a, b, c);
-    };
-    MathUtils.getInterpUV = function (uv1, uv2, uv3, a, b, c, dstUV) {
-        dstUV.u = MathUtils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c);
-        dstUV.v = MathUtils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c);
-    };
-    MathUtils.getInterpValue = function (v1, v2, v3, a, b, c) {
-        return v1 * a + v2 * b + v3 * c;
-    };
-    MathUtils.multiplyColor = function (color1, color2, dst) {
-        dst.r = color1.r * color2.r / 255;
-        dst.g = color1.g * color2.g / 255;
-        dst.b = color1.b * color2.b / 255;
-        dst.a = color1.a * color2.a / 255;
-        return dst;
-    };
-    return MathUtils;
-})();
+var matrix_1 = __webpack_require__(/*! ./math/matrix */ "./js/engine/math/matrix.js");
+var vector_1 = __webpack_require__(/*! ./math/vector */ "./js/engine/math/vector.js");
+var color_1 = __webpack_require__(/*! ./mesh/color */ "./js/engine/mesh/color.js");
+var utils_1 = __webpack_require__(/*! ./utils */ "./js/engine/utils.js");
 var Raster = (function () {
     function Raster(width, height) {
         this.frameBuffer = null;
         this.zBuffer = null;
-        this.backgroundColor = data_1.ColorEnums.clone(data_1.ColorEnums.BLACK);
+        this.backgroundColor = color_1.ColorEnums.clone(color_1.ColorEnums.BLACK);
         this.activeTexture = null;
         this.camera = {
-            view: new data_1.Matrix(),
-            projection: new data_1.Matrix(),
-            vp: new data_1.Matrix()
+            view: new matrix_1.Matrix(),
+            projection: new matrix_1.Matrix(),
+            vp: new matrix_1.Matrix()
         };
         this.width = width;
         this.height = height;
@@ -572,7 +565,7 @@ var Raster = (function () {
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
         var offScreenPointX = -1, offScreenPointY = -1;
-        var tempColor = data_1.ColorEnums.clone(data_1.ColorEnums.WHITE);
+        var tempColor = color_1.ColorEnums.clone(color_1.ColorEnums.WHITE);
         var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
@@ -583,15 +576,15 @@ var Raster = (function () {
                     if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
                         && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
                         && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
-                        var rhw = MathUtils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
+                        var rhw = utils_1["default"].getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
                         var zPos = this.width * y + x;
                         if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
                             var w = 1 / (rhw != 0 ? rhw : 1);
                             var a = alpha * w * v0.rhw;
                             var b = belta * w * v1.rhw;
                             var c = gama * w * v2.rhw;
-                            MathUtils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
-                            MathUtils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
+                            utils_1["default"].getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+                            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
                             var finalColor = this.fragmentShading(x, y, tempColor, uv);
                             if (finalColor.a > 0) {
                                 this.setPixel(x, y, finalColor);
@@ -606,7 +599,7 @@ var Raster = (function () {
     Raster.prototype.fragmentShading = function (x, y, color, uv) {
         if (this.activeTexture != null) {
             var tex = this.activeTexture.sample(uv);
-            return MathUtils.multiplyColor(tex, color, tex);
+            return utils_1["default"].multiplyColor(tex, color, tex);
         }
         return color;
     };
@@ -630,16 +623,16 @@ var Raster = (function () {
         for (var _i = 0; _i < va.length; _i++) {
             var vert = va[_i];
             if (vert.posProject == null) {
-                vert.posProject = new data_1.Vector();
+                vert.posProject = new vector_1.Vector();
             }
             vert.posWorld.transform(cameraTransform, vert.posProject);
             vert.rhw = 1 / vert.posProject.w;
             vert.posProject.homogenenize();
-            if (MathUtils.isInsideViewVolumn(vert.posProject)) {
+            if (utils_1["default"].isInsideViewVolumn(vert.posProject)) {
                 if (vert.posScreen == null) {
-                    vert.posScreen = new data_1.Vector();
+                    vert.posScreen = new vector_1.Vector();
                 }
-                MathUtils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height);
+                utils_1["default"].convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height);
             }
         }
         for (var i = 0; i < elements.length; i += 3) {
@@ -647,7 +640,7 @@ var Raster = (function () {
             var culling = false;
             for (var _a = 0; _a < trianglePoints.length; _a++) {
                 var p = trianglePoints[_a];
-                if (!MathUtils.isInsideViewVolumn(p.posProject)) {
+                if (!utils_1["default"].isInsideViewVolumn(p.posProject)) {
                     culling = true;
                     break;
                 }
@@ -658,9 +651,9 @@ var Raster = (function () {
         }
     };
     Raster.prototype.setDefaultCamera = function () {
-        var eye = new data_1.Vector(1.5, 0, 3, 1);
-        var at = new data_1.Vector(0, 0, 0, 1);
-        var up = new data_1.Vector(0, 1, 0, 1);
+        var eye = new vector_1.Vector(1.5, 0, 3, 1);
+        var at = new vector_1.Vector(0, 0, 0, 1);
+        var up = new vector_1.Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
         var aspect = this.width / this.height;
         var near = 1;
@@ -679,6 +672,61 @@ exports["default"] = Raster;
 
 /***/ }),
 
+/***/ "./js/engine/utils.js":
+/*!****************************!*\
+  !*** ./js/engine/utils.js ***!
+  \****************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var Utils = (function () {
+    function Utils() {
+    }
+    Utils.isInsideViewVolumn = function (v) {
+        if (v.x < -1 || v.x > 1) {
+            return false;
+        }
+        if (v.y < -1 || v.y > 1) {
+            return false;
+        }
+        if (v.z < -1 || v.z > 1) {
+            return false;
+        }
+        return true;
+    };
+    Utils.convertToScreenPos = function (v, dst, width, height) {
+        dst.x = (v.x + 1) / 2 * width;
+        dst.y = (v.y + 1) / 2 * height;
+        dst.z = v.z;
+        return dst;
+    };
+    Utils.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
+        dstColor.r = Utils.getInterpValue(color1.r, color2.r, color3.r, a, b, c);
+        dstColor.g = Utils.getInterpValue(color1.g, color2.g, color3.g, a, b, c);
+        dstColor.b = Utils.getInterpValue(color1.b, color2.b, color3.b, a, b, c);
+        dstColor.a = Utils.getInterpValue(color1.a, color2.a, color3.a, a, b, c);
+    };
+    Utils.getInterpUV = function (uv1, uv2, uv3, a, b, c, dstUV) {
+        dstUV.u = Utils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c);
+        dstUV.v = Utils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c);
+    };
+    Utils.getInterpValue = function (v1, v2, v3, a, b, c) {
+        return v1 * a + v2 * b + v3 * c;
+    };
+    Utils.multiplyColor = function (color1, color2, dst) {
+        dst.r = color1.r * color2.r / 255;
+        dst.g = color1.g * color2.g / 255;
+        dst.b = color1.b * color2.b / 255;
+        dst.a = color1.a * color2.a / 255;
+        return dst;
+    };
+    return Utils;
+})();
+exports["default"] = Utils;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
 /***/ "./js/main.js":
 /*!********************!*\
   !*** ./js/main.js ***!
@@ -687,7 +735,9 @@ exports["default"] = Raster;
 /***/ (function(module, exports, __webpack_require__) {
 
 var webgl_blitter_1 = __webpack_require__(/*! ./blitter/webgl-blitter */ "./js/blitter/webgl-blitter.js");
-var data_1 = __webpack_require__(/*! ./engine/data */ "./js/engine/data.js");
+var vector_1 = __webpack_require__(/*! ./engine/math/vector */ "./js/engine/math/vector.js");
+var color_1 = __webpack_require__(/*! ./engine/mesh/color */ "./js/engine/mesh/color.js");
+var texture_1 = __webpack_require__(/*! ./engine/mesh/texture */ "./js/engine/mesh/texture.js");
 var raster_1 = __webpack_require__(/*! ./engine/raster */ "./js/engine/raster.js");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
@@ -704,14 +754,14 @@ var App = (function () {
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new data_1.Vector(-1, -1, 1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new data_1.Vector(1, -1, 1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new data_1.Vector(1, 1, 1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new data_1.Vector(-1, 1, 1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new data_1.Vector(-1, -1, -1), color: data_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new data_1.Vector(1, -1, -1), color: data_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new data_1.Vector(1, 1, -1), color: data_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new data_1.Vector(-1, 1, -1), color: data_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -732,16 +782,16 @@ var App = (function () {
         this.flush();
     };
     App.prototype.createTexture = function () {
-        var texture = new data_1.Texture(256, 256);
+        var texture = new texture_1["default"](256, 256);
         for (var i = 0; i < 256; i++) {
             for (var j = 0; j < 256; j++) {
                 var x = Math.floor(i / 32);
                 var y = Math.floor(j / 32);
                 if ((x + y) % 2 == 0) {
-                    texture.setPixel(j, i, data_1.ColorEnums.BLUE);
+                    texture.setPixel(j, i, color_1.ColorEnums.BLUE);
                 }
                 else {
-                    texture.setPixel(j, i, data_1.ColorEnums.WHITE);
+                    texture.setPixel(j, i, color_1.ColorEnums.WHITE);
                 }
             }
         }

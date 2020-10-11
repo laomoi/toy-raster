@@ -146,7 +146,7 @@ export default class Raster {
                         //在三角形内，边上的点也属于三角形
                         //注意不能直接使用屏幕空间三角形的3个顶点属性直接插值，
                         //在3D空间中顶点属性可以通过重心坐标线性插值，但是屏幕空间中已经不是线性插值，需要做透视矫正
-                        let rhw = Utils.getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
+                        let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
                         //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
                         let zPos = this.width * y + x
                         if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
@@ -155,13 +155,8 @@ export default class Raster {
                             let a = alpha*w*v0.rhw
                             let b = belta*w*v1.rhw
                             let c = gama*w*v2.rhw
-                            
-                            Utils.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+                            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
                             Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-                            // if (!this.printed){
-                            //     console.log("uv=",  uv.u,uv.v)
-                            // }
-                            // console.log("inter uv", v0.uv, v1.uv, v2.uv, a, b, c, uv)
                             let finalColor = this.fragmentShading(x, y, tempColor, uv)
                             if (finalColor.a > 0) {
                                 this.setPixel(x, y, finalColor)
@@ -180,7 +175,7 @@ export default class Raster {
     protected fragmentShading(x:number, y:number, color:Color, uv:UV) {
         if (this.activeTexture != null) {
             let tex = this.activeTexture.sample(uv)
-            return Utils.multiplyColor(tex, color, tex)
+            return Colors.multiplyColor(tex, color, tex)
         } 
         return color
     }

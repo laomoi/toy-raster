@@ -387,13 +387,33 @@ exports.Vector = Vector;
   !*** ./js/core/mesh/color.js ***!
   \*******************************/
 /*! no static exports found */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
+var utils_1 = __webpack_require__(/*! ../utils */ "./js/core/utils.js");
 var Colors = (function () {
     function Colors() {
     }
     Colors.clone = function (color) {
         return { r: color.r, g: color.g, b: color.b, a: color.a };
+    };
+    Colors.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
+        dstColor.r = utils_1["default"].getInterpValue3(color1.r, color2.r, color3.r, a, b, c);
+        dstColor.g = utils_1["default"].getInterpValue3(color1.g, color2.g, color3.g, a, b, c);
+        dstColor.b = utils_1["default"].getInterpValue3(color1.b, color2.b, color3.b, a, b, c);
+        dstColor.a = utils_1["default"].getInterpValue3(color1.a, color2.a, color3.a, a, b, c);
+    };
+    Colors.getBilinearColor = function (c1, c2, c3, c4, w1, w2, w3, w4, dstColor) {
+        dstColor.r = utils_1["default"].getInterpValue4(c1.r, c2.r, c3.r, c4.r, w1, w2, w3, w4);
+        dstColor.g = utils_1["default"].getInterpValue4(c1.g, c2.g, c3.g, c4.g, w1, w2, w3, w4);
+        dstColor.b = utils_1["default"].getInterpValue4(c1.b, c2.b, c3.b, c4.b, w1, w2, w3, w4);
+        dstColor.a = utils_1["default"].getInterpValue4(c1.a, c2.a, c3.a, c4.a, w1, w2, w3, w4);
+    };
+    Colors.multiplyColor = function (color1, color2, dst) {
+        dst.r = color1.r * color2.r / 255;
+        dst.g = color1.g * color2.g / 255;
+        dst.b = color1.b * color2.b / 255;
+        dst.a = color1.a * color2.a / 255;
+        return dst;
     };
     Colors.BLACK = { r: 0, g: 0, b: 0, a: 255 };
     Colors.WHITE = { r: 255, g: 255, b: 255, a: 255 };
@@ -413,12 +433,19 @@ exports.Colors = Colors;
   !*** ./js/core/mesh/texture.js ***!
   \*********************************/
 /*! no static exports found */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
+var color_1 = __webpack_require__(/*! ./color */ "./js/core/mesh/color.js");
+(function (TEXTURE_FILTER_MODE) {
+    TEXTURE_FILTER_MODE[TEXTURE_FILTER_MODE["NEAREST"] = 1] = "NEAREST";
+    TEXTURE_FILTER_MODE[TEXTURE_FILTER_MODE["BILINEAR"] = 2] = "BILINEAR";
+})(exports.TEXTURE_FILTER_MODE || (exports.TEXTURE_FILTER_MODE = {}));
+var TEXTURE_FILTER_MODE = exports.TEXTURE_FILTER_MODE;
 var Texture = (function () {
     function Texture(width, height) {
         this.data = [];
         this.tmp = { r: 0, g: 0, b: 0, a: 0 };
+        this.filterMode = TEXTURE_FILTER_MODE.NEAREST;
         this.width = width;
         this.height = height;
     }
@@ -427,25 +454,52 @@ var Texture = (function () {
         this.data[pos] = color;
     };
     Texture.prototype.sample = function (uv) {
-        //clamp  sample
-        //use nearest sampler
         var x = uv.u * (this.width - 1);
         var y = uv.v * (this.height - 1);
-        x = Math.floor(x + 0.5);
-        y = Math.floor(y + 0.5);
-        if (x >= this.width) {
-            x = this.width - 1;
+        return this.samplePos(x + 0.5, y + 0.5);
+    };
+    Texture.prototype.clamp = function (value, min, max) {
+        if (value > max) {
+            return max;
         }
-        if (y >= this.height) {
-            y = this.height - 1;
+        if (value < min) {
+            return min;
         }
-        var pos = y * this.width + x;
-        var color = this.data[pos];
-        this.tmp.a = color.a;
-        this.tmp.r = color.r;
-        this.tmp.g = color.g;
-        this.tmp.b = color.b;
-        return this.tmp;
+        return value;
+    };
+    Texture.prototype.getPixel = function (x, y) {
+        return this.data[y * this.width + x];
+    };
+    Texture.prototype.samplePos = function (x, y) {
+        if (this.filterMode == TEXTURE_FILTER_MODE.NEAREST) {
+            x = this.clamp(Math.floor(x), 0, this.width - 1);
+            y = this.clamp(Math.floor(y), 0, this.height - 1);
+            var color = this.getPixel(x, y);
+            this.tmp.a = color.a;
+            this.tmp.r = color.r;
+            this.tmp.g = color.g;
+            this.tmp.b = color.b;
+            return this.tmp;
+        }
+        else if (this.filterMode == TEXTURE_FILTER_MODE.BILINEAR) {
+            var x1 = this.clamp(Math.floor(x), 0, this.width - 1);
+            var y1 = this.clamp(Math.floor(y), 0, this.height - 1);
+            var x2 = this.clamp(Math.floor(x) + 1, 0, this.width - 1);
+            var y2 = this.clamp(Math.floor(y) + 1, 0, this.height - 1);
+            var c1 = this.getPixel(x1, y1);
+            var c2 = this.getPixel(x2, y1);
+            var c3 = this.getPixel(x1, y2);
+            var c4 = this.getPixel(x2, y2);
+            var dx = x - x1;
+            var dy = y - y1;
+            var w1 = (1 - dx) * (1 - dy);
+            var w2 = dx * (1 - dy);
+            var w3 = (1 - dx) * dy;
+            var w4 = dx * dy;
+            color_1.Colors.getBilinearColor(c1, c2, c3, c4, w1, w2, w3, w4, this.tmp);
+            return this.tmp;
+        }
+        return color_1.Colors.BLACK;
     };
     return Texture;
 })();
@@ -578,14 +632,14 @@ var Raster = (function () {
                     if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
                         && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
                         && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
-                        var rhw = utils_1["default"].getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
+                        var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
                         var zPos = this.width * y + x;
                         if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
                             var w = 1 / (rhw != 0 ? rhw : 1);
                             var a = alpha * w * v0.rhw;
                             var b = belta * w * v1.rhw;
                             var c = gama * w * v2.rhw;
-                            utils_1["default"].getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+                            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
                             utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
                             var finalColor = this.fragmentShading(x, y, tempColor, uv);
                             if (finalColor.a > 0) {
@@ -601,7 +655,7 @@ var Raster = (function () {
     Raster.prototype.fragmentShading = function (x, y, color, uv) {
         if (this.activeTexture != null) {
             var tex = this.activeTexture.sample(uv);
-            return utils_1["default"].multiplyColor(tex, color, tex);
+            return color_1.Colors.multiplyColor(tex, color, tex);
         }
         return color;
     };
@@ -705,25 +759,15 @@ var Utils = (function () {
         dst.z = v.z;
         return dst;
     };
-    Utils.getInterpColor = function (color1, color2, color3, a, b, c, dstColor) {
-        dstColor.r = Utils.getInterpValue(color1.r, color2.r, color3.r, a, b, c);
-        dstColor.g = Utils.getInterpValue(color1.g, color2.g, color3.g, a, b, c);
-        dstColor.b = Utils.getInterpValue(color1.b, color2.b, color3.b, a, b, c);
-        dstColor.a = Utils.getInterpValue(color1.a, color2.a, color3.a, a, b, c);
-    };
     Utils.getInterpUV = function (uv1, uv2, uv3, a, b, c, dstUV) {
-        dstUV.u = Utils.getInterpValue(uv1.u, uv2.u, uv3.u, a, b, c);
-        dstUV.v = Utils.getInterpValue(uv1.v, uv2.v, uv3.v, a, b, c);
+        dstUV.u = Utils.getInterpValue3(uv1.u, uv2.u, uv3.u, a, b, c);
+        dstUV.v = Utils.getInterpValue3(uv1.v, uv2.v, uv3.v, a, b, c);
     };
-    Utils.getInterpValue = function (v1, v2, v3, a, b, c) {
+    Utils.getInterpValue3 = function (v1, v2, v3, a, b, c) {
         return v1 * a + v2 * b + v3 * c;
     };
-    Utils.multiplyColor = function (color1, color2, dst) {
-        dst.r = color1.r * color2.r / 255;
-        dst.g = color1.g * color2.g / 255;
-        dst.b = color1.b * color2.b / 255;
-        dst.a = color1.a * color2.a / 255;
-        return dst;
+    Utils.getInterpValue4 = function (v1, v2, v3, v4, a, b, c, d) {
+        return v1 * a + v2 * b + v3 * c + v4 * d;
     };
     return Utils;
 })();

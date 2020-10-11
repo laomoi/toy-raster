@@ -115,14 +115,14 @@ var Raster = (function () {
                     if ((alpha > 0 || fAlpha * this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) > 0)
                         && (belta > 0 || fBelta * this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) > 0)
                         && (gama > 0 || fGama * this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) > 0)) {
-                        var rhw = utils_1["default"].getInterpValue(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
+                        var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
                         var zPos = this.width * y + x;
                         if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
                             var w = 1 / (rhw != 0 ? rhw : 1);
                             var a = alpha * w * v0.rhw;
                             var b = belta * w * v1.rhw;
                             var c = gama * w * v2.rhw;
-                            utils_1["default"].getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+                            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
                             utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
                             var finalColor = this.fragmentShading(x, y, tempColor, uv);
                             if (finalColor.a > 0) {
@@ -138,7 +138,7 @@ var Raster = (function () {
     Raster.prototype.fragmentShading = function (x, y, color, uv) {
         if (this.activeTexture != null) {
             var tex = this.activeTexture.sample(uv);
-            return utils_1["default"].multiplyColor(tex, color, tex);
+            return color_1.Colors.multiplyColor(tex, color, tex);
         }
         return color;
     };

@@ -199,6 +199,7 @@ var Buffer = (function () {
     function Buffer(width, height, usingMSAA) {
         this.usingMSAA = true;
         this.zbuf = null;
+        this.msaaColorBuffer = null;
         this.usingMSAA = usingMSAA;
         this.width = width;
         this.height = height;
@@ -211,19 +212,36 @@ var Buffer = (function () {
             this.msaaColorBuffer = new Uint8Array(width * height * 4 * 4);
         }
     }
-    Buffer.prototype.ztest = function (x, y, rhw) {
-        var zPos = this.width * y + x;
+    Buffer.prototype.getZPos = function (x, y, index) {
+        if (!this.usingMSAA) {
+            return this.width * y + x;
+        }
+        else {
+            return (this.width * y + x) * 4 + index;
+        }
+    };
+    Buffer.prototype.ztest = function (x, y, rhw, index) {
+        if (index === void 0) { index = 0; }
+        var zPos = this.getZPos(x, y, index);
         if (isNaN(this.zbuf[zPos]) || this.zbuf[zPos] > rhw) {
             return true;
         }
         return false;
     };
-    Buffer.prototype.setZ = function (x, y, rhw) {
-        var zPos = this.width * y + x;
+    Buffer.prototype.setZ = function (x, y, rhw, index) {
+        if (index === void 0) { index = 0; }
+        var zPos = this.getZPos(x, y, index);
         this.zbuf[zPos] = rhw;
     };
-    Buffer.prototype.setColor = function (x, y, color) {
-        var pstart = (this.width * y + x) * 4;
+    Buffer.prototype.setColor = function (x, y, color, index) {
+        if (index === void 0) { index = 0; }
+        var pstart = 0;
+        if (!this.usingMSAA) {
+            pstart = (this.width * y + x) * 4;
+        }
+        else {
+            pstart = (this.width * y + x) * 4 * 4 + index * 4;
+        }
         this.frameBuffer[pstart] = color.r;
         this.frameBuffer[pstart + 1] = color.g;
         this.frameBuffer[pstart + 2] = color.b;
@@ -238,6 +256,16 @@ var Buffer = (function () {
         }
         for (var l = 0; l < this.zbuf.length; l++) {
             this.zbuf[l] = NaN;
+        }
+        if (this.msaaColorBuffer != null) {
+            for (var l = 0; l < this.msaaColorBuffer.length; l++) {
+                this.msaaColorBuffer[l] = NaN;
+            }
+        }
+    };
+    Buffer.prototype.applyMSAAFilter = function () {
+        if (this.msaaColorBuffer == null) {
+            return;
         }
     };
     return Buffer;
@@ -690,30 +718,84 @@ var Raster = (function () {
         var fAlphaTest = this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY);
         var fGamaTest = this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY);
         var fBeltaTest = this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY);
-        var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
-        var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
-                var barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
-                if (barycentric == null) {
-                    continue;
+                if (!this.usingMSAA) {
+                    this.rasterizePixelInTriangle(x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
                 }
-                var alpha = barycentric[0];
-                var belta = barycentric[1];
-                var gama = barycentric[2];
-                var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama);
-                if (this.buffer.ztest(x, y, rhw)) {
-                    var w = 1 / (rhw != 0 ? rhw : 1);
-                    var a = alpha * w * v0.rhw;
-                    var b = belta * w * v1.rhw;
-                    var c = gama * w * v2.rhw;
-                    color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
-                    utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
-                    var finalColor = this.fragmentShading(x, y, tempColor, uv);
-                    if (finalColor.a > 0) {
-                        this.setPixel(x, y, finalColor);
-                        this.buffer.setZ(x, y, rhw);
-                    }
+                else {
+                    this.rasterizePixelInTriangleMSAA(x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
+                }
+            }
+        }
+    };
+    Raster.prototype.rasterizePixelInTriangle = function (x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest) {
+        var barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
+        if (barycentric == null) {
+            return;
+        }
+        var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+        if (this.buffer.ztest(x, y, rhw)) {
+            var w = 1 / (rhw != 0 ? rhw : 1);
+            var a = barycentric[0] * w * v0.rhw;
+            var b = barycentric[1] * w * v1.rhw;
+            var c = barycentric[2] * w * v2.rhw;
+            var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
+            var uv = { u: 0, v: 0 };
+            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
+            var finalColor = this.fragmentShading(x, y, tempColor, uv);
+            if (finalColor.a > 0) {
+                this.setPixel(x, y, finalColor);
+                this.buffer.setZ(x, y, rhw);
+            }
+        }
+    };
+    Raster.prototype.rasterizePixelInTriangleMSAA = function (x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest) {
+        var points = [[x - 0.325, y + 0.125], [x + 0.125, y + 0.325], [x - 0.125, y - 0.325], [x + 0.325, y - 0.125]];
+        var testResults = [];
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            var px = p[0], py = p[1];
+            var barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
+            if (barycentric != null) {
+                var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+                if (this.buffer.ztest(x, y, rhw, i)) {
+                    testResults.push({
+                        barycentric: barycentric,
+                        index: i,
+                        x: x,
+                        y: y,
+                        rhw: rhw
+                    });
+                }
+            }
+        }
+        if (testResults.length > 0) {
+            var fx = x, fy = y;
+            var barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
+            if (barycentric == null) {
+                barycentric = testResults[0].barycentric;
+                fx = testResults[0].x;
+                fy = testResults[0].y;
+            }
+            var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+            var w = 1 / (rhw != 0 ? rhw : 1);
+            var a = barycentric[0] * w * v0.rhw;
+            var b = barycentric[1] * w * v1.rhw;
+            var c = barycentric[2] * w * v2.rhw;
+            var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
+            var uv = { u: 0, v: 0 };
+            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
+            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
+            var finalColor = this.fragmentShading(fx, fy, tempColor, uv);
+            if (finalColor.a > 0) {
+                for (var _i = 0; _i < testResults.length; _i++) {
+                    var result = testResults[_i];
+                    var index = result.index;
+                    var rhw_1 = result.rhw;
+                    this.setPixel(x, y, finalColor, index);
+                    this.buffer.setZ(x, y, rhw_1, index);
                 }
             }
         }
@@ -731,9 +813,10 @@ var Raster = (function () {
     Raster.prototype.setBackgroundColor = function (color) {
         this.backgroundColor = color_1.Colors.clone(color);
     };
-    Raster.prototype.setPixel = function (x, y, color) {
+    Raster.prototype.setPixel = function (x, y, color, index) {
+        if (index === void 0) { index = 0; }
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {
-            this.buffer.setColor(x, y, color);
+            this.buffer.setColor(x, y, color, index);
         }
     };
     Raster.prototype.drawElements = function (va, elements) {
@@ -787,6 +870,9 @@ var Raster = (function () {
         this.camera.vp = this.camera.view.multiply(this.camera.projection);
     };
     Raster.prototype.getFrameBuffer = function () {
+        if (this.usingMSAA) {
+            this.buffer.applyMSAAFilter();
+        }
         return this.buffer.frameBuffer;
     };
     return Raster;

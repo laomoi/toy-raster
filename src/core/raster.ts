@@ -144,38 +144,95 @@ export default class Raster {
         let fGamaTest = this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY)
         let fBeltaTest = this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY)
 
-        let tempColor:Color = Colors.clone(Colors.WHITE)
-        let uv:UV = {u:0, v:0}
         for (let x=minX;x<=maxX;x++) {
             for (let y=minY;y<=maxY;y++) {
-                let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
-                if (barycentric == null) {
-                    continue
+                if (!this.usingMSAA) {
+                    this.rasterizePixelInTriangle(x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
+                } else {
+                    this.rasterizePixelInTriangleMSAA(x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
                 }
-                let alpha = barycentric[0]
-                let belta = barycentric[1]
-                let gama = barycentric[2]
-                let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
-                //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
-                if (this.buffer.ztest(x, y, rhw)) {
-                    let w = 1 / (rhw != 0 ? rhw : 1)
-                    //反推3D空间中的重心坐标  a, b, c
-                    let a = alpha*w*v0.rhw
-                    let b = belta*w*v1.rhw
-                    let c = gama*w*v2.rhw
-                    Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
-                    Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-                    let finalColor = this.fragmentShading(x, y, tempColor, uv)
-                    if (finalColor.a > 0) {
-                        this.setPixel(x, y, finalColor)
-                        this.buffer.setZ(x, y, rhw)
-                    }
-                }
-
             }
         }
     }
 
+    protected rasterizePixelInTriangle(x:number, y:number, vs:Array<Vector>, v0:Vertex, v1:Vertex, v2:Vertex,
+        fAlpha:number, fBelta:number, fGama:number, fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
+        let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
+        if (barycentric == null) {
+            return
+        }
+        let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+        //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
+        if (this.buffer.ztest(x, y, rhw)) {
+            let w = 1 / (rhw != 0 ? rhw : 1)
+            //反推3D空间中的重心坐标  a, b, c
+            let a = barycentric[0]*w*v0.rhw
+            let b = barycentric[1]*w*v1.rhw
+            let c = barycentric[2]*w*v2.rhw
+            let tempColor:Color = Colors.clone(Colors.WHITE)
+            let uv:UV = {u:0, v:0}
+            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+            let finalColor = this.fragmentShading(x, y, tempColor, uv)
+            if (finalColor.a > 0) {
+                this.setPixel(x, y, finalColor)
+                this.buffer.setZ(x, y, rhw)
+            }
+        }
+    }
+
+    protected rasterizePixelInTriangleMSAA(x:number, y:number, vs:Array<Vector>, v0:Vertex, v1:Vertex, v2:Vertex,
+        fAlpha:number, fBelta:number, fGama:number, fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
+        //4个子采样点, 2x2 RGSS GRID  
+        let points = [[x-0.325,y+0.125],[x+0.125, y+0.325],[x-0.125, y-0.325],[x+0.325,y-0.125]] 
+        let testResults:Array<{barycentric:number[],index:number,x:number,y:number,rhw:number}> = []  
+        for (let i=0;i<points.length;i++) {
+            let p = points[i]
+            let px:number = p[0], py:number=p[1]
+            let barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
+            if (barycentric != null) {
+                let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+                if (this.buffer.ztest(x, y, rhw, i)) {
+                    testResults.push({
+                            barycentric: barycentric, 
+                            index:i, 
+                            x: x, 
+                            y: y, 
+                            rhw:rhw
+                        }
+                    )
+                }
+            }
+        } 
+        if (testResults.length > 0) {
+            //对像素中心点进行一次frag着色,如果取不到，则使用第一个采样点进行着色
+            let fx = x, fy = y
+            let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
+            if (barycentric == null) {
+                barycentric = testResults[0].barycentric
+                fx = testResults[0].x
+                fy = testResults[0].y
+            }
+            let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+            let w = 1 / (rhw != 0 ? rhw : 1)
+            let a = barycentric[0]*w*v0.rhw
+            let b = barycentric[1]*w*v1.rhw
+            let c = barycentric[2]*w*v2.rhw
+            let tempColor:Color = Colors.clone(Colors.WHITE)
+            let uv:UV = {u:0, v:0}
+            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+            let finalColor = this.fragmentShading(fx, fy, tempColor, uv)
+            if (finalColor.a > 0) {
+                for (let result of testResults) {
+                    let index = result.index
+                    let rhw = result.rhw
+                    this.setPixel(x, y, finalColor, index)
+                    this.buffer.setZ(x, y, rhw, index)
+                }
+            }
+        }
+    }
     //片元着色
     protected fragmentShading(x:number, y:number, color:Color, uv:UV) {
         if (this.activeTexture != null) {
@@ -193,10 +250,11 @@ export default class Raster {
         this.backgroundColor = Colors.clone(color)
     }
 
-    public setPixel(x:number, y:number, color:Color) {
+    public setPixel(x:number, y:number, color:Color, index:number=0) {
         if (x < this.width && y < this.height && x>=0 && y>=0) {
-            this.buffer.setColor(x, y, color)
+            this.buffer.setColor(x, y, color, index)
         }
+        
     }
 
     //va is array of vertex, elements is triangles using vertex index in va
@@ -257,6 +315,9 @@ export default class Raster {
     }
 
     public getFrameBuffer() {
+        if(this.usingMSAA) {
+            this.buffer.applyMSAAFilter()
+        }
         return this.buffer.frameBuffer
     }
 }

@@ -5,7 +5,7 @@ var color_1 = require("./mesh/color");
 var utils_1 = require("./utils");
 var Raster = (function () {
     function Raster(width, height, usingMSAA) {
-        if (usingMSAA === void 0) { usingMSAA = false; }
+        if (usingMSAA === void 0) { usingMSAA = true; }
         this.buffer = null;
         this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
         this.activeTexture = null;
@@ -193,6 +193,7 @@ var Raster = (function () {
                     this.setPixel(x, y, finalColor, index);
                     this.buffer.setZ(x, y, rhw_1, index);
                 }
+                this.buffer.applyMSAAFilter(x, y);
             }
         }
     };
@@ -266,9 +267,6 @@ var Raster = (function () {
         this.camera.vp = this.camera.view.multiply(this.camera.projection);
     };
     Raster.prototype.getFrameBuffer = function () {
-        if (this.usingMSAA) {
-            this.buffer.applyMSAAFilter();
-        }
         return this.buffer.frameBuffer;
     };
     return Raster;

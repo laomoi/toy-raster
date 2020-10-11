@@ -6,7 +6,7 @@ var raster_1 = require("./core/raster");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
-        this.renderder = new raster_1["default"](canvasWidth, canvasHeight);
+        this.renderder = new raster_1["default"](canvasWidth, canvasHeight, true);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
         this.init();
         var self = this;
@@ -17,7 +17,7 @@ var App = (function () {
         wrapMainLoop();
     }
     App.prototype.init = function () {
-        var eye = new vector_1.Vector(1.5, 1.5, 3, 1);
+        var eye = new vector_1.Vector(1.5, 0, 2.5, 1);
         var at = new vector_1.Vector(0, 0, 0, 1);
         var up = new vector_1.Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
@@ -25,18 +25,19 @@ var App = (function () {
         var near = 1;
         var far = 500;
         this.renderder.setCamera(eye, at, up, fovy, aspect, near, far);
+        this.renderder.setBackgroundColor(color_1.Colors.YELLOW);
     };
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.WHITE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.WHITE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,

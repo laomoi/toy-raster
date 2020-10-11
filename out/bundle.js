@@ -235,17 +235,24 @@ var Buffer = (function () {
     };
     Buffer.prototype.setColor = function (x, y, color, index) {
         if (index === void 0) { index = 0; }
-        var pstart = 0;
         if (!this.usingMSAA) {
-            pstart = (this.width * y + x) * 4;
+            this.setFrameBufferPixel(x, y, color);
         }
         else {
-            pstart = (this.width * y + x) * 4 * 4 + index * 4;
+            var pstart = (this.width * y + x) * 4 * 4 + index * 4;
+            this.msaaColorBuffer[pstart] = color.r;
+            this.msaaColorBuffer[pstart + 1] = color.g;
+            this.msaaColorBuffer[pstart + 2] = color.b;
+            this.msaaColorBuffer[pstart + 3] = color.a;
         }
-        this.frameBuffer[pstart] = color.r;
-        this.frameBuffer[pstart + 1] = color.g;
-        this.frameBuffer[pstart + 2] = color.b;
-        this.frameBuffer[pstart + 3] = color.a;
+    };
+    Buffer.prototype.setFrameBufferPixel = function (x, y, color) {
+        var pstart = (this.width * y + x) * 4;
+        var a = color.a / 255;
+        this.frameBuffer[pstart] = color.r * a + this.frameBuffer[pstart] * (1 - a);
+        this.frameBuffer[pstart + 1] = color.g * a + this.frameBuffer[pstart + 1] * (1 - a);
+        this.frameBuffer[pstart + 2] = color.b * a + this.frameBuffer[pstart + 2] * (1 - a);
+        this.frameBuffer[pstart + 3] = 255;
     };
     Buffer.prototype.clear = function (backgroundColor) {
         for (var l = 0; l < this.frameBuffer.length; l += 4) {
@@ -258,15 +265,32 @@ var Buffer = (function () {
             this.zbuf[l] = NaN;
         }
         if (this.msaaColorBuffer != null) {
-            for (var l = 0; l < this.msaaColorBuffer.length; l++) {
-                this.msaaColorBuffer[l] = NaN;
+            for (var l = 0; l < this.msaaColorBuffer.length; l += 4) {
+                this.msaaColorBuffer[l] = backgroundColor.r;
+                this.msaaColorBuffer[l + 1] = backgroundColor.g;
+                this.msaaColorBuffer[l + 2] = backgroundColor.b;
+                this.msaaColorBuffer[l + 3] = backgroundColor.a;
             }
         }
     };
-    Buffer.prototype.applyMSAAFilter = function () {
+    Buffer.prototype.applyMSAAFilter = function (x, y) {
         if (this.msaaColorBuffer == null) {
             return;
         }
+        var pstart = (this.width * y + x) * 4 * 4;
+        var color = { r: 0, g: 0, b: 0, a: 0 };
+        for (var i = 0; i < 4; i++) {
+            var colorStart = pstart + i * 4;
+            var r = this.msaaColorBuffer[colorStart];
+            var g = this.msaaColorBuffer[colorStart + 1];
+            var b = this.msaaColorBuffer[colorStart + 2];
+            var a = this.msaaColorBuffer[colorStart + 3];
+            color.r += 0.25 * r;
+            color.g += 0.25 * g;
+            color.b += 0.25 * b;
+            color.a += 0.25 * a;
+        }
+        this.setFrameBufferPixel(x, y, color);
     };
     return Buffer;
 })();
@@ -507,7 +531,7 @@ var Colors = (function () {
     Colors.RED = { r: 255, g: 0, b: 0, a: 255 };
     Colors.BLUE = { r: 0, g: 0, b: 255, a: 255 };
     Colors.GREEN = { r: 0, g: 255, b: 0, a: 255 };
-    Colors.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
+    Colors.YELLOW = { r: 255, g: 255, b: 0, a: 255 };
     return Colors;
 })();
 exports.Colors = Colors;
@@ -609,7 +633,7 @@ var color_1 = __webpack_require__(/*! ./mesh/color */ "./js/core/mesh/color.js")
 var utils_1 = __webpack_require__(/*! ./utils */ "./js/core/utils.js");
 var Raster = (function () {
     function Raster(width, height, usingMSAA) {
-        if (usingMSAA === void 0) { usingMSAA = false; }
+        if (usingMSAA === void 0) { usingMSAA = true; }
         this.buffer = null;
         this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
         this.activeTexture = null;
@@ -797,6 +821,7 @@ var Raster = (function () {
                     this.setPixel(x, y, finalColor, index);
                     this.buffer.setZ(x, y, rhw_1, index);
                 }
+                this.buffer.applyMSAAFilter(x, y);
             }
         }
     };
@@ -870,9 +895,6 @@ var Raster = (function () {
         this.camera.vp = this.camera.view.multiply(this.camera.projection);
     };
     Raster.prototype.getFrameBuffer = function () {
-        if (this.usingMSAA) {
-            this.buffer.applyMSAAFilter();
-        }
         return this.buffer.frameBuffer;
     };
     return Raster;
@@ -942,7 +964,7 @@ var raster_1 = __webpack_require__(/*! ./core/raster */ "./js/core/raster.js");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
-        this.renderder = new raster_1["default"](canvasWidth, canvasHeight);
+        this.renderder = new raster_1["default"](canvasWidth, canvasHeight, true);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
         this.init();
         var self = this;
@@ -953,7 +975,7 @@ var App = (function () {
         wrapMainLoop();
     }
     App.prototype.init = function () {
-        var eye = new vector_1.Vector(1.5, 1.5, 3, 1);
+        var eye = new vector_1.Vector(1.5, 0, 2.5, 1);
         var at = new vector_1.Vector(0, 0, 0, 1);
         var up = new vector_1.Vector(0, 1, 0, 1);
         var fovy = Math.PI / 2;
@@ -961,18 +983,19 @@ var App = (function () {
         var near = 1;
         var far = 500;
         this.renderder.setCamera(eye, at, up, fovy, aspect, near, far);
+        this.renderder.setBackgroundColor(color_1.Colors.YELLOW);
     };
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.WHITE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.WHITE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,

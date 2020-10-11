@@ -29,7 +29,7 @@ export default class Raster {
         vp: new Matrix()
     }
 
-    constructor(width:number, height:number, usingMSAA:boolean=false) {
+    constructor(width:number, height:number, usingMSAA:boolean=true) {
         this.width = width
         this.height = height
         this.usingMSAA = usingMSAA
@@ -230,6 +230,7 @@ export default class Raster {
                     this.setPixel(x, y, finalColor, index)
                     this.buffer.setZ(x, y, rhw, index)
                 }
+                this.buffer.applyMSAAFilter(x, y)
             }
         }
     }
@@ -256,7 +257,6 @@ export default class Raster {
         }
         
     }
-
     //va is array of vertex, elements is triangles using vertex index in va
     public drawElements(va:Array<Vertex>, elements:Array<number>) {
         //根据当前的view和project, 对所有三角形进行投影计算
@@ -315,9 +315,6 @@ export default class Raster {
     }
 
     public getFrameBuffer() {
-        if(this.usingMSAA) {
-            this.buffer.applyMSAAFilter()
-        }
         return this.buffer.frameBuffer
     }
 }

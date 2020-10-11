@@ -1,13 +1,14 @@
 var webgl_blitter_1 = require("./blitter/webgl-blitter");
-var vector_1 = require("./engine/math/vector");
-var color_1 = require("./engine/mesh/color");
-var texture_1 = require("./engine/mesh/texture");
-var raster_1 = require("./engine/raster");
+var vector_1 = require("./core/math/vector");
+var color_1 = require("./core/mesh/color");
+var texture_1 = require("./core/mesh/texture");
+var raster_1 = require("./core/raster");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
         this.renderder = new raster_1["default"](canvasWidth, canvasHeight);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
+        this.init();
         var self = this;
         var wrapMainLoop = function () {
             self.mainLoop();
@@ -15,17 +16,27 @@ var App = (function () {
         };
         wrapMainLoop();
     }
+    App.prototype.init = function () {
+        var eye = new vector_1.Vector(1.5, 1.5, 3, 1);
+        var at = new vector_1.Vector(0, 0, 0, 1);
+        var up = new vector_1.Vector(0, 1, 0, 1);
+        var fovy = Math.PI / 2;
+        var aspect = this.renderder.width / this.renderder.height;
+        var near = 1;
+        var far = 500;
+        this.renderder.setCamera(eye, at, up, fovy, aspect, near, far);
+    };
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -52,10 +63,10 @@ var App = (function () {
                 var x = Math.floor(i / 32);
                 var y = Math.floor(j / 32);
                 if ((x + y) % 2 == 0) {
-                    texture.setPixel(j, i, color_1.ColorEnums.BLUE);
+                    texture.setPixel(j, i, color_1.Colors.BLUE);
                 }
                 else {
-                    texture.setPixel(j, i, color_1.ColorEnums.WHITE);
+                    texture.setPixel(j, i, color_1.Colors.WHITE);
                 }
             }
         }
@@ -74,6 +85,6 @@ window.onload = function () {
         console.log("WEBGL FAILED");
         return;
     }
-    var app = new App(canvas.width, canvas.height, gl);
+    window.app = new App(canvas.width, canvas.height, gl);
 };
 //# sourceMappingURL=main.js.map

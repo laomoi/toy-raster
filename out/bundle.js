@@ -188,10 +188,10 @@ exports.WebGLBlitter = WebGLBlitter;
 
 /***/ }),
 
-/***/ "./js/engine/math/matrix.js":
-/*!**********************************!*\
-  !*** ./js/engine/math/matrix.js ***!
-  \**********************************/
+/***/ "./js/core/math/matrix.js":
+/*!********************************!*\
+  !*** ./js/core/math/matrix.js ***!
+  \********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -271,10 +271,10 @@ exports.Matrix = Matrix;
 
 /***/ }),
 
-/***/ "./js/engine/math/vector.js":
-/*!**********************************!*\
-  !*** ./js/engine/math/vector.js ***!
-  \**********************************/
+/***/ "./js/core/math/vector.js":
+/*!********************************!*\
+  !*** ./js/core/math/vector.js ***!
+  \********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -382,36 +382,36 @@ exports.Vector = Vector;
 
 /***/ }),
 
-/***/ "./js/engine/mesh/color.js":
-/*!*********************************!*\
-  !*** ./js/engine/mesh/color.js ***!
-  \*********************************/
+/***/ "./js/core/mesh/color.js":
+/*!*******************************!*\
+  !*** ./js/core/mesh/color.js ***!
+  \*******************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-var ColorEnums = (function () {
-    function ColorEnums() {
+var Colors = (function () {
+    function Colors() {
     }
-    ColorEnums.clone = function (color) {
+    Colors.clone = function (color) {
         return { r: color.r, g: color.g, b: color.b, a: color.a };
     };
-    ColorEnums.BLACK = { r: 0, g: 0, b: 0, a: 255 };
-    ColorEnums.WHITE = { r: 255, g: 255, b: 255, a: 255 };
-    ColorEnums.RED = { r: 255, g: 0, b: 0, a: 255 };
-    ColorEnums.BLUE = { r: 0, g: 0, b: 255, a: 255 };
-    ColorEnums.GREEN = { r: 0, g: 255, b: 0, a: 255 };
-    ColorEnums.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
-    return ColorEnums;
+    Colors.BLACK = { r: 0, g: 0, b: 0, a: 255 };
+    Colors.WHITE = { r: 255, g: 255, b: 255, a: 255 };
+    Colors.RED = { r: 255, g: 0, b: 0, a: 255 };
+    Colors.BLUE = { r: 0, g: 0, b: 255, a: 255 };
+    Colors.GREEN = { r: 0, g: 255, b: 0, a: 255 };
+    Colors.ORANGE = { r: 255, g: 255, b: 0, a: 255 };
+    return Colors;
 })();
-exports.ColorEnums = ColorEnums;
+exports.Colors = Colors;
 //# sourceMappingURL=color.js.map
 
 /***/ }),
 
-/***/ "./js/engine/mesh/texture.js":
-/*!***********************************!*\
-  !*** ./js/engine/mesh/texture.js ***!
-  \***********************************/
+/***/ "./js/core/mesh/texture.js":
+/*!*********************************!*\
+  !*** ./js/core/mesh/texture.js ***!
+  \*********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -427,15 +427,17 @@ var Texture = (function () {
         this.data[pos] = color;
     };
     Texture.prototype.sample = function (uv) {
-        var x = uv.u * this.width;
-        var y = uv.v * this.height;
+        //clamp  sample
+        //use nearest sampler
+        var x = uv.u * (this.width - 1);
+        var y = uv.v * (this.height - 1);
         x = Math.floor(x + 0.5);
         y = Math.floor(y + 0.5);
         if (x >= this.width) {
-            x = x % this.width;
+            x = this.width - 1;
         }
         if (y >= this.height) {
-            y = y % this.height;
+            y = this.height - 1;
         }
         var pos = y * this.width + x;
         var color = this.data[pos];
@@ -452,22 +454,22 @@ exports["default"] = Texture;
 
 /***/ }),
 
-/***/ "./js/engine/raster.js":
-/*!*****************************!*\
-  !*** ./js/engine/raster.js ***!
-  \*****************************/
+/***/ "./js/core/raster.js":
+/*!***************************!*\
+  !*** ./js/core/raster.js ***!
+  \***************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-var matrix_1 = __webpack_require__(/*! ./math/matrix */ "./js/engine/math/matrix.js");
-var vector_1 = __webpack_require__(/*! ./math/vector */ "./js/engine/math/vector.js");
-var color_1 = __webpack_require__(/*! ./mesh/color */ "./js/engine/mesh/color.js");
-var utils_1 = __webpack_require__(/*! ./utils */ "./js/engine/utils.js");
+var matrix_1 = __webpack_require__(/*! ./math/matrix */ "./js/core/math/matrix.js");
+var vector_1 = __webpack_require__(/*! ./math/vector */ "./js/core/math/vector.js");
+var color_1 = __webpack_require__(/*! ./mesh/color */ "./js/core/mesh/color.js");
+var utils_1 = __webpack_require__(/*! ./utils */ "./js/core/utils.js");
 var Raster = (function () {
     function Raster(width, height) {
         this.frameBuffer = null;
         this.zBuffer = null;
-        this.backgroundColor = color_1.ColorEnums.clone(color_1.ColorEnums.BLACK);
+        this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
         this.activeTexture = null;
         this.camera = {
             view: new matrix_1.Matrix(),
@@ -565,7 +567,7 @@ var Raster = (function () {
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
         var offScreenPointX = -1, offScreenPointY = -1;
-        var tempColor = color_1.ColorEnums.clone(color_1.ColorEnums.WHITE);
+        var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
         var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
@@ -605,6 +607,9 @@ var Raster = (function () {
     };
     Raster.prototype.setActiveTexture = function (texture) {
         this.activeTexture = texture;
+    };
+    Raster.prototype.setBackgroundColor = function (color) {
+        this.backgroundColor = color_1.Colors.clone(color);
     };
     Raster.prototype.setPixel = function (x, y, color) {
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {
@@ -672,10 +677,10 @@ exports["default"] = Raster;
 
 /***/ }),
 
-/***/ "./js/engine/utils.js":
-/*!****************************!*\
-  !*** ./js/engine/utils.js ***!
-  \****************************/
+/***/ "./js/core/utils.js":
+/*!**************************!*\
+  !*** ./js/core/utils.js ***!
+  \**************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -735,15 +740,16 @@ exports["default"] = Utils;
 /***/ (function(module, exports, __webpack_require__) {
 
 var webgl_blitter_1 = __webpack_require__(/*! ./blitter/webgl-blitter */ "./js/blitter/webgl-blitter.js");
-var vector_1 = __webpack_require__(/*! ./engine/math/vector */ "./js/engine/math/vector.js");
-var color_1 = __webpack_require__(/*! ./engine/mesh/color */ "./js/engine/mesh/color.js");
-var texture_1 = __webpack_require__(/*! ./engine/mesh/texture */ "./js/engine/mesh/texture.js");
-var raster_1 = __webpack_require__(/*! ./engine/raster */ "./js/engine/raster.js");
+var vector_1 = __webpack_require__(/*! ./core/math/vector */ "./js/core/math/vector.js");
+var color_1 = __webpack_require__(/*! ./core/mesh/color */ "./js/core/mesh/color.js");
+var texture_1 = __webpack_require__(/*! ./core/mesh/texture */ "./js/core/mesh/texture.js");
+var raster_1 = __webpack_require__(/*! ./core/raster */ "./js/core/raster.js");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
         this.renderder = new raster_1["default"](canvasWidth, canvasHeight);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
+        this.init();
         var self = this;
         var wrapMainLoop = function () {
             self.mainLoop();
@@ -751,17 +757,27 @@ var App = (function () {
         };
         wrapMainLoop();
     }
+    App.prototype.init = function () {
+        var eye = new vector_1.Vector(1.5, 1.5, 3, 1);
+        var at = new vector_1.Vector(0, 0, 0, 1);
+        var up = new vector_1.Vector(0, 1, 0, 1);
+        var fovy = Math.PI / 2;
+        var aspect = this.renderder.width / this.renderder.height;
+        var near = 1;
+        var far = 500;
+        this.renderder.setCamera(eye, at, up, fovy, aspect, near, far);
+    };
     App.prototype.mainLoop = function () {
         this.renderder.clear();
         var va = [
-            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.ColorEnums.GREEN, uv: { u: 0, v: 0 } },
-            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.ColorEnums.BLUE, uv: { u: 1, v: 0 } },
-            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.ColorEnums.RED, uv: { u: 1, v: 1 } },
-            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.ColorEnums.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, 1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, 1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, 1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, 1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, -1, -1), color: color_1.Colors.GREEN, uv: { u: 0, v: 0 } },
+            { posWorld: new vector_1.Vector(1, -1, -1), color: color_1.Colors.BLUE, uv: { u: 1, v: 0 } },
+            { posWorld: new vector_1.Vector(1, 1, -1), color: color_1.Colors.RED, uv: { u: 1, v: 1 } },
+            { posWorld: new vector_1.Vector(-1, 1, -1), color: color_1.Colors.ORANGE, uv: { u: 0, v: 1 } },
         ];
         var elements = [
             0, 1, 2,
@@ -788,10 +804,10 @@ var App = (function () {
                 var x = Math.floor(i / 32);
                 var y = Math.floor(j / 32);
                 if ((x + y) % 2 == 0) {
-                    texture.setPixel(j, i, color_1.ColorEnums.BLUE);
+                    texture.setPixel(j, i, color_1.Colors.BLUE);
                 }
                 else {
-                    texture.setPixel(j, i, color_1.ColorEnums.WHITE);
+                    texture.setPixel(j, i, color_1.Colors.WHITE);
                 }
             }
         }
@@ -810,7 +826,7 @@ window.onload = function () {
         console.log("WEBGL FAILED");
         return;
     }
-    var app = new App(canvas.width, canvas.height, gl);
+    window.app = new App(canvas.width, canvas.height, gl);
 };
 //# sourceMappingURL=main.js.map
 

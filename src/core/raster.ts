@@ -1,6 +1,6 @@
 import { Matrix } from "./math/matrix"
 import { Vector } from "./math/vector"
-import { Color, ColorEnums } from "./mesh/color"
+import { Color, Colors } from "./mesh/color"
 import Texture, { UV } from "./mesh/texture"
 import { Vertex } from "./mesh/vertex"
 import Utils from "./utils"
@@ -18,7 +18,7 @@ export default class Raster {
     public height:number
     public frameBuffer:Uint8Array = null
     protected zBuffer:Float32Array = null
-    protected backgroundColor:Color = ColorEnums.clone(ColorEnums.BLACK)
+    protected backgroundColor:Color = Colors.clone(Colors.BLACK)
     protected activeTexture:Texture = null
 
     protected camera:Camera = {
@@ -128,7 +128,7 @@ export default class Raster {
         let fAlpha =  this.barycentricFunc(vs, 1, 2, x0, y0)
         let offScreenPointX = -1, offScreenPointY = -1
         
-        let tempColor:Color = ColorEnums.clone(ColorEnums.WHITE)
+        let tempColor:Color = Colors.clone(Colors.WHITE)
         let uv:UV = {u:0, v:0}
 
         for (let x=minX;x<=maxX;x++) {
@@ -187,6 +187,10 @@ export default class Raster {
 
     public setActiveTexture(texture:Texture) {
         this.activeTexture = texture
+    }
+
+    public setBackgroundColor(color:Color) {
+        this.backgroundColor = Colors.clone(color)
     }
 
     public setPixel(x:number, y:number, color:Color) {

@@ -1,9 +1,9 @@
 import { WebGLBlitter } from "./blitter/webgl-blitter"
-import { Vector } from "./engine/math/vector"
-import { ColorEnums } from "./engine/mesh/color"
-import Texture from "./engine/mesh/texture"
-import { Vertex } from "./engine/mesh/vertex"
-import Raster from "./engine/raster"
+import { Vector } from "./core/math/vector"
+import { Colors } from "./core/mesh/color"
+import Texture from "./core/mesh/texture"
+import { Vertex } from "./core/mesh/vertex"
+import Raster from "./core/raster"
 
 export default class App {
     protected blitter:WebGLBlitter = null
@@ -11,12 +11,27 @@ export default class App {
     constructor(canvasWidth:number, canvasHeight:number, gl:any) {
         this.renderder = new Raster(canvasWidth, canvasHeight)
         this.blitter = new WebGLBlitter(gl)
+        this.init()
+
+        //loop
         let self = this
         let wrapMainLoop = function() {
             self.mainLoop()
             requestAnimationFrame(wrapMainLoop)
         }
         wrapMainLoop()
+    }
+
+    protected init() {
+        let eye = new Vector(1.5, 1.5, 3, 1)
+        let at = new Vector(0, 0, 0, 1)
+        let up = new Vector(0, 1, 0, 1)
+        let fovy = Math.PI / 2
+        let aspect = this.renderder.width / this.renderder.height
+        let near = 1
+        let far = 500
+        this.renderder.setCamera(eye, at, up, fovy, aspect, near, far)
+        // this.renderder.setBackgroundColor(Colors.WHITE)
     }
 
     protected mainLoop() {
@@ -32,15 +47,15 @@ export default class App {
 
         
         let va:Array<Vertex> = [
-            {posWorld:new Vector(-1,-1,1), color:ColorEnums.GREEN, uv:{u:0, v:0}}, 
-            {posWorld:new Vector(1,-1,1), color:ColorEnums.BLUE, uv:{u:1, v:0}}, 
-            {posWorld:new Vector(1,1,1), color:ColorEnums.RED, uv:{u:1, v:1}}, 
-            {posWorld:new Vector(-1,1,1), color:ColorEnums.ORANGE, uv:{u:0, v:1}}, 
+            {posWorld:new Vector(-1,-1,1), color:Colors.GREEN, uv:{u:0, v:0}}, 
+            {posWorld:new Vector(1,-1,1), color:Colors.BLUE, uv:{u:1, v:0}}, 
+            {posWorld:new Vector(1,1,1), color:Colors.RED, uv:{u:1, v:1}}, 
+            {posWorld:new Vector(-1,1,1), color:Colors.ORANGE, uv:{u:0, v:1}}, 
 
-            {posWorld:new Vector(-1,-1,-1), color:ColorEnums.GREEN, uv:{u:0, v:0}}, 
-            {posWorld:new Vector(1,-1,-1), color:ColorEnums.BLUE, uv:{u:1, v:0}}, 
-            {posWorld:new Vector(1,1,-1), color:ColorEnums.RED, uv:{u:1, v:1}}, 
-            {posWorld:new Vector(-1,1,-1), color:ColorEnums.ORANGE, uv:{u:0, v:1}}, 
+            {posWorld:new Vector(-1,-1,-1), color:Colors.GREEN, uv:{u:0, v:0}}, 
+            {posWorld:new Vector(1,-1,-1), color:Colors.BLUE, uv:{u:1, v:0}}, 
+            {posWorld:new Vector(1,1,-1), color:Colors.RED, uv:{u:1, v:1}}, 
+            {posWorld:new Vector(-1,1,-1), color:Colors.ORANGE, uv:{u:0, v:1}}, 
 
         ] //立方体8个顶点
         let elements = [
@@ -72,13 +87,12 @@ export default class App {
                 let x = Math.floor(i/32)
                 let y = Math.floor(j/32)
                 if ((x+y) % 2 == 0) {
-                    texture.setPixel(j, i, ColorEnums.BLUE)
+                    texture.setPixel(j, i, Colors.BLUE)
                 } else {
-                    texture.setPixel(j, i, ColorEnums.WHITE)
+                    texture.setPixel(j, i, Colors.WHITE)
                 }
             }
         }
- 
         return texture
     }
 
@@ -86,6 +100,7 @@ export default class App {
     protected flush() {
         this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.frameBuffer)
     }
+
 }
 
 
@@ -97,5 +112,5 @@ window.onload = function () {
         return;
     }
 
-    var app = new App(canvas.width, canvas.height, gl)
+    window.app = new App(canvas.width, canvas.height, gl);
 }

@@ -6,7 +6,7 @@ var Raster = (function () {
     function Raster(width, height) {
         this.frameBuffer = null;
         this.zBuffer = null;
-        this.backgroundColor = color_1.ColorEnums.clone(color_1.ColorEnums.BLACK);
+        this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
         this.activeTexture = null;
         this.camera = {
             view: new matrix_1.Matrix(),
@@ -104,7 +104,7 @@ var Raster = (function () {
         var fGama = this.barycentricFunc(vs, 0, 1, x2, y2);
         var fAlpha = this.barycentricFunc(vs, 1, 2, x0, y0);
         var offScreenPointX = -1, offScreenPointY = -1;
-        var tempColor = color_1.ColorEnums.clone(color_1.ColorEnums.WHITE);
+        var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
         var uv = { u: 0, v: 0 };
         for (var x = minX; x <= maxX; x++) {
             for (var y = minY; y <= maxY; y++) {
@@ -144,6 +144,9 @@ var Raster = (function () {
     };
     Raster.prototype.setActiveTexture = function (texture) {
         this.activeTexture = texture;
+    };
+    Raster.prototype.setBackgroundColor = function (color) {
+        this.backgroundColor = color_1.Colors.clone(color);
     };
     Raster.prototype.setPixel = function (x, y, color) {
         if (x < this.width && y < this.height && x >= 0 && y >= 0) {

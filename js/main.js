@@ -73,7 +73,7 @@ var App = (function () {
         return texture;
     };
     App.prototype.flush = function () {
-        this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.frameBuffer);
+        this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.getFrameBuffer());
     };
     return App;
 })();

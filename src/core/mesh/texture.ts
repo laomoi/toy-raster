@@ -16,7 +16,7 @@ export default class Texture {
     public data:Array<Color> = []
     protected tmp:Color = {r:0, g:0, b:0, a:0}
 
-    public filterMode:TEXTURE_FILTER_MODE = TEXTURE_FILTER_MODE.NEAREST
+    public filterMode:TEXTURE_FILTER_MODE = TEXTURE_FILTER_MODE.BILINEAR
 
     constructor(width:number, height:number) {
         this.width = width

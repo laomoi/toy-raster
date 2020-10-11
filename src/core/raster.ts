@@ -1,3 +1,4 @@
+import Buffer from "./buffer"
 import { Matrix } from "./math/matrix"
 import { Vector } from "./math/vector"
 import { Color, Colors } from "./mesh/color"
@@ -16,10 +17,11 @@ export interface Camera {
 export default class Raster {
     public width:number 
     public height:number
-    public frameBuffer:Uint8Array = null
-    protected zBuffer:Float32Array = null
+    // public frameBuffer:Uint8Array = null
+    protected buffer:Buffer = null
     protected backgroundColor:Color = Colors.clone(Colors.BLACK)
     protected activeTexture:Texture = null
+    protected usingMSAA:boolean = true //使用2x2 grid的MSAA抗锯齿
 
     protected camera:Camera = {
         view: new Matrix(),
@@ -27,28 +29,19 @@ export default class Raster {
         vp: new Matrix()
     }
 
-    constructor(width:number, height:number) {
+    constructor(width:number, height:number, usingMSAA:boolean=false) {
         this.width = width
         this.height = height
+        this.usingMSAA = usingMSAA
 
-        this.frameBuffer = new Uint8Array(width*height*4)
-        this.zBuffer = new Float32Array(width*height)
+        this.buffer = new Buffer(width, height, usingMSAA)
 
         this.setDefaultCamera()
     }
 
     public clear() {
-        for (let l=0;l<this.frameBuffer.length;l+=4){
-            this.frameBuffer[l] = this.backgroundColor.r
-            this.frameBuffer[l+1] = this.backgroundColor.g
-            this.frameBuffer[l+2] = this.backgroundColor.b
-            this.frameBuffer[l+3] = this.backgroundColor.a
-        }
-        for (let l=0;l<this.zBuffer.length;l++){
-            this.zBuffer[l] = NaN
-        }
+        this.buffer.clear(this.backgroundColor)
     }
-
 
     public drawLine(x0:number, y0:number, x1:number, y1:number, color:Color){
         if (x0 == x1) {
@@ -112,7 +105,26 @@ export default class Raster {
     protected barycentricFunc(vs:Array<Vector>, a:number, b:number, x:number, y:number):number{
         return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
     }
-// protected printed:boolean = false
+
+    //如果在三角形内，返回[3个重心坐标], 否则返回null
+    protected getBarycentricInTriangle(x:number, y:number, vs:Array<Vector>, fAlpha:number, fBelta:number, fGama:number,
+        fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
+        //F(a,b, x,y) = (ya-yb)*x + (xb-xa)*y + xa*yb - xb*ya, 
+        //a,b is [0,1,2], belta= F(2,0,x,y) / F(2, 0, x1,y1)
+        let belta = this.barycentricFunc(vs, 2, 0, x, y) / fBelta
+        let gama = this.barycentricFunc(vs, 0, 1, x, y) / fGama
+        let alpha = 1 - belta - gama
+        if (alpha>=0 && belta >=0 && gama >=0) {
+            if (  (alpha > 0 || fAlpha*fAlphaTest > 0) 
+            &&  (belta > 0 || fBelta*fBeltaTest > 0) 
+            &&  (gama > 0 || fGama*fGamaTest > 0) 
+                ){
+                return [ alpha, belta, gama]
+            }
+        }
+        return null
+    }
+
     public drawTriangle2D(v0:Vertex, v1:Vertex, v2:Vertex) {
         //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
         //使用AABB来优化性能
@@ -126,49 +138,42 @@ export default class Raster {
         let fBelta = this.barycentricFunc(vs, 2, 0, x1, y1)
         let fGama = this.barycentricFunc(vs, 0, 1, x2, y2)
         let fAlpha =  this.barycentricFunc(vs, 1, 2, x0, y0)
+
         let offScreenPointX = -1, offScreenPointY = -1
-        
+        let fAlphaTest = this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY)
+        let fGamaTest = this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY)
+        let fBeltaTest = this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY)
+
         let tempColor:Color = Colors.clone(Colors.WHITE)
         let uv:UV = {u:0, v:0}
-
         for (let x=minX;x<=maxX;x++) {
             for (let y=minY;y<=maxY;y++) {
-                //F(a,b, x,y) = (ya-yb)*x + (xb-xa)*y + xa*yb - xb*ya, 
-                //a,b is [0,1,2], belta= F(2,0,x,y) / F(2, 0, x1,y1)
-                let belta = this.barycentricFunc(vs, 2, 0, x, y) / fBelta
-                let gama = this.barycentricFunc(vs, 0, 1, x, y) / fGama
-                let alpha = 1 - belta - gama
-                if (alpha>=0 && belta >=0 && gama >=0) {
-                    if (  (alpha > 0 || fAlpha*this.barycentricFunc(vs, 1, 2, offScreenPointX, offScreenPointY) >0) 
-                    &&  (belta > 0 || fBelta*this.barycentricFunc(vs, 2, 0, offScreenPointX, offScreenPointY) >0) 
-                    &&  (gama > 0 || fGama*this.barycentricFunc(vs, 0, 1, offScreenPointX, offScreenPointY) >0) 
-                      ){
-                        //在三角形内，边上的点也属于三角形
-                        //注意不能直接使用屏幕空间三角形的3个顶点属性直接插值，
-                        //在3D空间中顶点属性可以通过重心坐标线性插值，但是屏幕空间中已经不是线性插值，需要做透视矫正
-                        let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
-                        //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
-                        let zPos = this.width * y + x
-                        if (isNaN(this.zBuffer[zPos]) || this.zBuffer[zPos] > rhw) {
-                            let w = 1 / (rhw != 0 ? rhw : 1)
-                            //反推3D空间中的重心坐标  a, b, c
-                            let a = alpha*w*v0.rhw
-                            let b = belta*w*v1.rhw
-                            let c = gama*w*v2.rhw
-                            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
-                            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-                            let finalColor = this.fragmentShading(x, y, tempColor, uv)
-                            if (finalColor.a > 0) {
-                                this.setPixel(x, y, finalColor)
-                                this.zBuffer[zPos] = rhw
-                            }
-                        }
+                let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
+                if (barycentric == null) {
+                    continue
+                }
+                let alpha = barycentric[0]
+                let belta = barycentric[1]
+                let gama = barycentric[2]
+                let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, alpha, belta, gama) //1/z
+                //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
+                if (this.buffer.ztest(x, y, rhw)) {
+                    let w = 1 / (rhw != 0 ? rhw : 1)
+                    //反推3D空间中的重心坐标  a, b, c
+                    let a = alpha*w*v0.rhw
+                    let b = belta*w*v1.rhw
+                    let c = gama*w*v2.rhw
+                    Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
+                    Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+                    let finalColor = this.fragmentShading(x, y, tempColor, uv)
+                    if (finalColor.a > 0) {
+                        this.setPixel(x, y, finalColor)
+                        this.buffer.setZ(x, y, rhw)
                     }
                 }
+
             }
         }
-        // this.printed = true
-
     }
 
     //片元着色
@@ -190,11 +195,7 @@ export default class Raster {
 
     public setPixel(x:number, y:number, color:Color) {
         if (x < this.width && y < this.height && x>=0 && y>=0) {
-            let pstart = (this.width*y + x)*4
-            this.frameBuffer[pstart] = color.r
-            this.frameBuffer[pstart+1] = color.g
-            this.frameBuffer[pstart+2] = color.b
-            this.frameBuffer[pstart+3] = color.a
+            this.buffer.setColor(x, y, color)
         }
     }
 
@@ -253,6 +254,10 @@ export default class Raster {
         this.camera.view.setLookAt(eye, lookAt, up)
         this.camera.projection.setPerspective(fovy, aspect, near, far)
         this.camera.vp = this.camera.view.multiply(this.camera.projection)
+    }
+
+    public getFrameBuffer() {
+        return this.buffer.frameBuffer
     }
 }
 

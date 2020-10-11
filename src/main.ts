@@ -98,7 +98,7 @@ export default class App {
 
 
     protected flush() {
-        this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.frameBuffer)
+        this.blitter.blitPixels(this.renderder.width, this.renderder.height, this.renderder.getFrameBuffer())
     }
 
 }

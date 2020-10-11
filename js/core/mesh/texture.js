@@ -8,7 +8,7 @@ var Texture = (function () {
     function Texture(width, height) {
         this.data = [];
         this.tmp = { r: 0, g: 0, b: 0, a: 0 };
-        this.filterMode = TEXTURE_FILTER_MODE.NEAREST;
+        this.filterMode = TEXTURE_FILTER_MODE.BILINEAR;
         this.width = width;
         this.height = height;
     }

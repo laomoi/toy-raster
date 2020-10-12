@@ -5,6 +5,7 @@
   "author": "laomoi",
   "license": "CC0-1.0",
   "devDependencies": {
+    "arraybuffer-loader": "^1.0.8",
     "tsc": "^1.20150623.0",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"

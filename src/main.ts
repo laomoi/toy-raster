@@ -4,6 +4,8 @@ import { Colors } from "./core/mesh/color"
 import Texture from "./core/mesh/texture"
 import { Vertex } from "./core/mesh/vertex"
 import Raster from "./core/raster"
+let buffer = require('arraybuffer-loader!../res/test.bin')
+let array = new Uint8Array(buffer)
 
 export default class App {
     protected blitter:WebGLBlitter = null
@@ -12,6 +14,9 @@ export default class App {
         this.renderder = new Raster(canvasWidth, canvasHeight, true)
         this.blitter = new WebGLBlitter(gl)
         this.init()
+
+        console.log(array)
+        return
 
         //loop
         let self = this

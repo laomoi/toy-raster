@@ -7,12 +7,16 @@ import { IExample } from "../main"
 
 
 
+import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
 
 
 
 export default class DrawMesh implements IExample{
     protected texture:Texture
     protected renderer:Raster
+
+    protected va:Array<Vertex> = null
+    protected elements:Array<number> = null
     public constructor(renderer:Raster) {
         this.texture = this.createTexture()
         this.renderer = renderer
@@ -36,43 +40,68 @@ export default class DrawMesh implements IExample{
     }
 
     protected loadObj() {
-        let buffer = require('arraybuffer-loader!../../res/diablo3_pose.obj')
-        let array = new Uint8Array(buffer)
-        console.log(array)
+
+        // let buffer = require('arraybuffer-loader!../../res/diablo3_pose.obj')
+        // let array = new Uint8Array(buffer)
+        // array.toString
+        let lines:Array<string> = objBuffer.split(/\r\n|\n/)
+        let vList:Array<any> =[]
+        let uvList:Array<any> =[]
+        let normalList:Array<any> =[]
+        let faceList:Array<any> =[]
+
+        for (let line of lines) {
+            if (line != ""){
+                if (line.charAt(0) == "#"){
+                    continue
+                }
+                let vals = line.split(" ")
+                let t = vals[0]
+                if (t == "v" && vals.length>=4) {
+                    vList.push(vals)
+                } else if (t == "vt" && vals.length>=3) {
+                    uvList.push(vals)
+                }else if (t == "vn" && vals.length>=4) {
+                    normalList.push(vals)
+                }else if (t == "f" && vals.length>=4) {
+                    let fvals = [
+                        vals[1].split("/"),
+                        vals[2].split("/"),
+                        vals[3].split("/"),
+                    ]
+                    faceList.push(fvals)  //v/vt/vn index
+                }
+            }
+        }
+        //mesh 
+        let vertextList:Array<Vertex> = []
+        let elements:Array<number> = []
+        for (let v of vList){
+            vertextList.push({
+                posWorld:new Vector(parseFloat(v[1]),parseFloat(v[2]), parseFloat(v[3])), color:Colors.WHITE, uv:{u:0, v:0}
+            })
+        }
+        for (let f of faceList){
+            let v1 = f[0]
+            let v2 = f[1]
+            let v3 = f[2]
+            elements.push(parseInt(v1[0]) -1, parseInt(v2[0]) -1, parseInt(v3[0]) -1)
+            if (elements[-1] > vertextList.length) {
+                console.log("obj error, has wrong element", elements[-1], vertextList.length)
+                return
+            }
+        }
+
+        this.va = vertextList
+        this.elements = elements
+        console.log(vertextList)
     }
 
     public draw() :void{
-
-        let va:Array<Vertex> = [
-            {posWorld:new Vector(-1,-1,1), color:Colors.WHITE, uv:{u:0, v:0}}, 
-            {posWorld:new Vector(1,-1,1), color:Colors.WHITE, uv:{u:1, v:0}}, 
-            {posWorld:new Vector(1,1,1), color:Colors.WHITE, uv:{u:1, v:1}}, 
-            {posWorld:new Vector(-1,1,1), color:Colors.WHITE, uv:{u:0, v:1}}, 
-
-            {posWorld:new Vector(-1,-1,-1), color:Colors.WHITE, uv:{u:0, v:0}}, 
-            {posWorld:new Vector(1,-1,-1), color:Colors.WHITE, uv:{u:1, v:0}}, 
-            {posWorld:new Vector(1,1,-1), color:Colors.WHITE, uv:{u:1, v:1}}, 
-            {posWorld:new Vector(-1,1,-1), color:Colors.WHITE, uv:{u:0, v:1}}, 
-
-        ] //立方体8个顶点
-        let elements = [
-            0, 1, 2,  //front
-            2, 3, 0,
-            7, 6, 5,  //back
-            5, 4, 7,
-            0, 4, 5, //bottom
-            5, 1, 0,
-            1, 5, 6, //right
-            6, 2, 1,
-            2, 6, 7,  //top
-            7, 3, 2,
-            3, 7, 4,  //left
-            4, 0, 3
-
-        ] //24个三角形,立方体外表面
-
-        this.renderer.setActiveTexture(this.texture)
-        this.renderer.drawElements(va, elements)
+        if (this.va == null) {
+            return
+        }
+        this.renderer.drawElements(this.va, this.elements)
     }
 
     protected createTexture(){

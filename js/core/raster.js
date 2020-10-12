@@ -241,6 +241,9 @@ var Raster = (function () {
             var culling = false;
             for (var _a = 0; _a < trianglePoints.length; _a++) {
                 var p = trianglePoints[_a];
+                if (p == null) {
+                    console.log("error p", elements[i], elements[i + 1], elements[i + 2]);
+                }
                 if (!utils_1["default"].isInsideViewVolumn(p.posProject)) {
                     culling = true;
                     break;

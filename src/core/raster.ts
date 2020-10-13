@@ -257,6 +257,22 @@ export default class Raster {
         }
         
     }
+
+    public drawTriangle(va:Array<Vertex>){
+        if (va.length % 3 != 0){
+            return
+        }
+        //执行顶点着色器，得到真正的投影坐标，输出到 context, 作为片元着色器的输入
+        for (let vertex of va) {
+
+        }
+
+        //没做backface culling, 只做了view volumn culling
+        //三角形细分的clip没做
+        //计算到屏幕坐标，执行片元着色器
+        
+    }
+
     //va is array of vertex, elements is triangles using vertex index in va
     public drawElements(va:Array<Vertex>, elements:Array<number>) {
         //根据当前的view和project, 对所有三角形进行投影计算

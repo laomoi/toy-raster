@@ -19,7 +19,7 @@ export default class App {
     constructor(canvasWidth:number, canvasHeight:number, gl:any) {
         this.renderer = new Raster(canvasWidth, canvasHeight, true)
         this.blitter = new WebGLBlitter(gl)
-        this.example = new DrawMesh(this.renderer)
+        this.example = new DrawBox(this.renderer)
 
         //loop
         let self = this

@@ -81,11 +81,28 @@ export default class DrawMesh implements IExample{
                 posWorld:new Vector(parseFloat(v[1]),parseFloat(v[2]), parseFloat(v[3])), color:Colors.WHITE, uv:{u:0, v:0}
             })
         }
+        let vtest:any = {}
         for (let f of faceList){
             let v1 = f[0]
             let v2 = f[1]
             let v3 = f[2]
             elements.push(parseInt(v1[0]) -1, parseInt(v2[0]) -1, parseInt(v3[0]) -1)
+            // if (vtest[ v1[0] ] ==null) {
+            //     vtest[ v1[0] ] = {uv: v1[1], n:v1[2]}
+            // } else if (vtest[ v1[0] ].uv != v1[1]  ) {
+            //     console.log("uv not same",v1[0], vtest[ v1[0] ].uv, v1[1])
+            // }
+            // if (vtest[ v2[0] ] ==null) {
+            //     vtest[ v2[0] ] = {uv: v2[1], n:v2[2]}
+            // }else if (vtest[ v2[0] ].uv != v2[1]  ) {
+            //     console.log("uv not same",v2[0], vtest[ v2[0] ].uv, v2[1])
+            // }
+            // if (vtest[ v3[0] ] ==null) {
+            //     vtest[ v3[0] ] = {uv: v3[1], n:v3[2]}
+            // }else if (vtest[ v3[0] ].uv != v3[1]  ) {
+            //     console.log("uv not same",v3[0], vtest[ v3[0] ].uv, v3[1])
+            // }
+            
             if (elements[-1] > vertextList.length) {
                 console.log("obj error, has wrong element", elements[-1], vertextList.length)
                 return

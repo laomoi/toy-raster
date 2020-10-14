@@ -1,9 +1,10 @@
 import { Vector } from "../core/math/vector"
-import { Colors } from "../core/mesh/color"
+import { Color, Colors } from "../core/mesh/color"
 import Texture from "../core/mesh/texture"
 import { Vertex } from "../core/mesh/vertex"
 import Raster from "../core/raster"
 import { IExample } from "../main"
+import Shader, { VertexShaderInput, ShaderContext } from "../core/mesh/shader"
 
 
 
@@ -15,8 +16,7 @@ export default class DrawMesh implements IExample{
     protected texture:Texture
     protected renderer:Raster
 
-    protected va:Array<Vertex> = null
-    protected elements:Array<number> = null
+    protected triangles:Array<any> = []
     public constructor(renderer:Raster) {
         this.texture = this.createTexture()
         this.renderer = renderer
@@ -34,7 +34,23 @@ export default class DrawMesh implements IExample{
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
         this.renderer.setBackgroundColor(Colors.YELLOW)
-
+        let shader:Shader = new Shader(
+            {
+                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
+                    
+                    vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
+                    return vertex.context.posProject
+                },
+                fragmentShading: function(context:ShaderContext):Color {
+                    if (context.texture != null) {
+                        let tex = context.texture.sample(context.uv)
+                        return Colors.multiplyColor(tex, context.color, tex)
+                    } 
+                    return context.color
+                }
+            }
+        )
+        this.renderer.setShader(shader)
 
         this.loadObj()
     }
@@ -74,51 +90,32 @@ export default class DrawMesh implements IExample{
             }
         }
         //mesh 
-        let vertextList:Array<Vertex> = []
-        let elements:Array<number> = []
+        let vertextList:Array<Vector> = []
         for (let v of vList){
-            vertextList.push({
-                posWorld:new Vector(parseFloat(v[1]),parseFloat(v[2]), parseFloat(v[3])), color:Colors.WHITE, uv:{u:0, v:0}
-            })
+            vertextList.push(new Vector(parseFloat(v[1]),parseFloat(v[2]), parseFloat(v[3])))
         }
         let vtest:any = {}
         for (let f of faceList){
-            let v1 = f[0]
-            let v2 = f[1]
-            let v3 = f[2]
-            elements.push(parseInt(v1[0]) -1, parseInt(v2[0]) -1, parseInt(v3[0]) -1)
-            // if (vtest[ v1[0] ] ==null) {
-            //     vtest[ v1[0] ] = {uv: v1[1], n:v1[2]}
-            // } else if (vtest[ v1[0] ].uv != v1[1]  ) {
-            //     console.log("uv not same",v1[0], vtest[ v1[0] ].uv, v1[1])
-            // }
-            // if (vtest[ v2[0] ] ==null) {
-            //     vtest[ v2[0] ] = {uv: v2[1], n:v2[2]}
-            // }else if (vtest[ v2[0] ].uv != v2[1]  ) {
-            //     console.log("uv not same",v2[0], vtest[ v2[0] ].uv, v2[1])
-            // }
-            // if (vtest[ v3[0] ] ==null) {
-            //     vtest[ v3[0] ] = {uv: v3[1], n:v3[2]}
-            // }else if (vtest[ v3[0] ].uv != v3[1]  ) {
-            //     console.log("uv not same",v3[0], vtest[ v3[0] ].uv, v3[1])
-            // }
-            
-            if (elements[-1] > vertextList.length) {
-                console.log("obj error, has wrong element", elements[-1], vertextList.length)
-                return
-            }
-        }
+            let v1s = f[0]
+            let v2s = f[1]
+            let v3s = f[2]
+            // vertex/uv/normal
+            let v1 = vertextList[ parseInt(v1s[0]) -1 ]
+            let v2 = vertextList[ parseInt(v2s[0]) -1 ]
+            let v3 = vertextList[ parseInt(v3s[0]) -1 ]
 
-        this.va = vertextList
-        this.elements = elements
-        console.log(vertextList)
+            this.triangles.push([
+                {posWorld:v1, color:Colors.WHITE, uv:{u:1, v:1}}, 
+                {posWorld:v2, color:Colors.WHITE, uv:{u:1, v:0}}, 
+                {posWorld:v3, color:Colors.WHITE, uv:{u:0, v:0}}, 
+            ])
+        }
     }
 
     public draw() :void{
-        if (this.va == null) {
-            return
+        for (let triangle of this.triangles) {
+            this.renderer.drawTriangle(triangle)
         }
-        this.renderer.drawElements(this.va, this.elements)
     }
 
     protected createTexture(){

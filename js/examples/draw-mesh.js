@@ -1,11 +1,11 @@
 var vector_1 = require("../core/math/vector");
 var color_1 = require("../core/mesh/color");
 var texture_1 = require("../core/mesh/texture");
+var shader_1 = require("../core/mesh/shader");
 var diablo3_pose_obj_1 = require('raw-loader!../../res/diablo3_pose.obj');
 var DrawMesh = (function () {
     function DrawMesh(renderer) {
-        this.va = null;
-        this.elements = null;
+        this.triangles = [];
         this.texture = this.createTexture();
         this.renderer = renderer;
         this.init();
@@ -20,6 +20,20 @@ var DrawMesh = (function () {
         var far = 500;
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far);
         this.renderer.setBackgroundColor(color_1.Colors.YELLOW);
+        var shader = new shader_1["default"]({
+            vertexShading: function (vertex, input) {
+                vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                return vertex.context.posProject;
+            },
+            fragmentShading: function (context) {
+                if (context.texture != null) {
+                    var tex = context.texture.sample(context.uv);
+                    return color_1.Colors.multiplyColor(tex, context.color, tex);
+                }
+                return context.color;
+            }
+        });
+        this.renderer.setShader(shader);
         this.loadObj();
     };
     DrawMesh.prototype.loadObj = function () {
@@ -56,33 +70,31 @@ var DrawMesh = (function () {
             }
         }
         var vertextList = [];
-        var elements = [];
         for (var _a = 0; _a < vList.length; _a++) {
             var v = vList[_a];
-            vertextList.push({
-                posWorld: new vector_1.Vector(parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3])), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 }
-            });
+            vertextList.push(new vector_1.Vector(parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3])));
         }
+        var vtest = {};
         for (var _b = 0; _b < faceList.length; _b++) {
             var f = faceList[_b];
-            var v1 = f[0];
-            var v2 = f[1];
-            var v3 = f[2];
-            elements.push(parseInt(v1[0]) - 1, parseInt(v2[0]) - 1, parseInt(v3[0]) - 1);
-            if (elements[-1] > vertextList.length) {
-                console.log("obj error, has wrong element", elements[-1], vertextList.length);
-                return;
-            }
+            var v1s = f[0];
+            var v2s = f[1];
+            var v3s = f[2];
+            var v1 = vertextList[parseInt(v1s[0]) - 1];
+            var v2 = vertextList[parseInt(v2s[0]) - 1];
+            var v3 = vertextList[parseInt(v3s[0]) - 1];
+            this.triangles.push([
+                { posWorld: v1, color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+                { posWorld: v2, color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+                { posWorld: v3, color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            ]);
         }
-        this.va = vertextList;
-        this.elements = elements;
-        console.log(vertextList);
     };
     DrawMesh.prototype.draw = function () {
-        if (this.va == null) {
-            return;
+        for (var _i = 0, _a = this.triangles; _i < _a.length; _i++) {
+            var triangle = _a[_i];
+            this.renderer.drawTriangle(triangle);
         }
-        this.renderer.drawElements(this.va, this.elements);
     };
     DrawMesh.prototype.createTexture = function () {
         var texture = new texture_1["default"](256, 256);

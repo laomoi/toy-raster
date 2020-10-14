@@ -2,6 +2,7 @@ import Buffer from "./buffer"
 import { Matrix } from "./math/matrix"
 import { Vector } from "./math/vector"
 import { Color, Colors } from "./mesh/color"
+import Shader, { IShaderProgram, ShaderContext } from "./mesh/shader"
 import Texture, { UV } from "./mesh/texture"
 import { Vertex } from "./mesh/vertex"
 import Utils from "./utils"
@@ -22,6 +23,7 @@ export default class Raster {
     protected backgroundColor:Color = Colors.clone(Colors.BLACK)
     protected activeTexture:Texture = null
     protected usingMSAA:boolean = true //使用2x2 grid的MSAA抗锯齿
+    protected currentShader:Shader = null
 
     protected camera:Camera = {
         view: new Matrix(),
@@ -129,7 +131,7 @@ export default class Raster {
         //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
         //使用AABB来优化性能
         //对于三角形边(edge case)上的点, 使用的是<CG 4th>上的算法， 使用一个Off-screen point(-1, -1) 来判断是否在同一边
-        let vs = [v0.posScreen, v1.posScreen, v2.posScreen]
+        let vs = [v0.context.posScreen, v1.context.posScreen, v2.context.posScreen]
         let x0 = vs[0].x, x1 = vs[1].x, x2 = vs[2].x, y0 = vs[0].y, y1=vs[1].y, y2=vs[2].y
         let minX = Math.floor( Math.min(x0, x1, x2) )
         let maxX = Math.ceil( Math.max(x0, x1, x2) )
@@ -161,19 +163,22 @@ export default class Raster {
         if (barycentric == null) {
             return
         }
-        let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+        let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
         //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
         if (this.buffer.ztest(x, y, rhw)) {
             let w = 1 / (rhw != 0 ? rhw : 1)
             //反推3D空间中的重心坐标  a, b, c
-            let a = barycentric[0]*w*v0.rhw
-            let b = barycentric[1]*w*v1.rhw
-            let c = barycentric[2]*w*v2.rhw
+            let a = barycentric[0]*w*v0.context.rhw
+            let b = barycentric[1]*w*v1.context.rhw
+            let c = barycentric[2]*w*v2.context.rhw
             let tempColor:Color = Colors.clone(Colors.WHITE)
             let uv:UV = {u:0, v:0}
             Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
             Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-            let finalColor = this.fragmentShading(x, y, tempColor, uv)
+            let context:ShaderContext = {
+                x:x,y:y, color:tempColor,uv:uv,texture:this.activeTexture, normal:null
+            }
+            let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor)
                 this.buffer.setZ(x, y, rhw)
@@ -191,7 +196,7 @@ export default class Raster {
             let px:number = p[0], py:number=p[1]
             let barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
             if (barycentric != null) {
-                let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+                let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
                 if (this.buffer.ztest(x, y, rhw, i)) {
                     testResults.push({
                             barycentric: barycentric, 
@@ -213,16 +218,20 @@ export default class Raster {
                 fx = testResults[0].x
                 fy = testResults[0].y
             }
-            let rhw = Utils.getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+            let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
             let w = 1 / (rhw != 0 ? rhw : 1)
-            let a = barycentric[0]*w*v0.rhw
-            let b = barycentric[1]*w*v1.rhw
-            let c = barycentric[2]*w*v2.rhw
+            let a = barycentric[0]*w*v0.context.rhw
+            let b = barycentric[1]*w*v1.context.rhw
+            let c = barycentric[2]*w*v2.context.rhw
             let tempColor:Color = Colors.clone(Colors.WHITE)
             let uv:UV = {u:0, v:0}
             Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
             Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-            let finalColor = this.fragmentShading(fx, fy, tempColor, uv)
+
+            let context:ShaderContext = {
+                x:fx,y:fy, color:tempColor,uv:uv,texture:this.activeTexture, normal:null
+            }
+            let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
                 for (let result of testResults) {
                     let index = result.index
@@ -234,15 +243,8 @@ export default class Raster {
             }
         }
     }
-    //片元着色
-    protected fragmentShading(x:number, y:number, color:Color, uv:UV) {
-        if (this.activeTexture != null) {
-            let tex = this.activeTexture.sample(uv)
-            return Colors.multiplyColor(tex, color, tex)
-        } 
-        return color
-    }
-
+    
+  
     public setActiveTexture(texture:Texture) {
         this.activeTexture = texture
     }
@@ -253,9 +255,8 @@ export default class Raster {
 
     public setPixel(x:number, y:number, color:Color, index:number=0) {
         if (x < this.width && y < this.height && x>=0 && y>=0) {
-            this.buffer.setColor(x, y, color, index)
-        }
-        
+            this.buffer.setColor(x, y, color, index) //override blend
+        }        
     }
 
     public drawTriangle(va:Array<Vertex>){
@@ -263,55 +264,77 @@ export default class Raster {
             return
         }
         //执行顶点着色器，得到真正的投影坐标，输出到 context, 作为片元着色器的输入
+        this.currentShader.setViewProject(this.camera.vp)
         for (let vertex of va) {
-
+            vertex.context = {
+                posProject: new Vector(),
+                posScreen: new Vector(),
+                rhw: 1
+            }
+            this.currentShader.vertexShading(vertex)      
+            vertex.context.rhw = 1/vertex.context.posProject.w //w等同于投影前的视图坐标的z
+            vertex.context.posProject.homogenenize()      
         }
 
         //没做backface culling, 只做了view volumn culling
         //三角形细分的clip没做
         //计算到屏幕坐标，执行片元着色器
+        let culling = false
+        for (let p of va) {
+            //view volumn culling
+            if (!Utils.isInsideViewVolumn(p.context.posProject) ) {
+                culling = true
+                break;
+            }
+        }
         
+        if (!culling) {
+            for (let p of va) {
+                Utils.convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height)
+            } 
+            this.drawTriangle2D(va[0], va[1], va[2])
+        }
     }
 
     //va is array of vertex, elements is triangles using vertex index in va
-    public drawElements(va:Array<Vertex>, elements:Array<number>) {
-        //根据当前的view和project, 对所有三角形进行投影计算
-        //对每一个三角形进行光栅化， 然后进行着色，zbuffer和framebuffer赋值
-        //没做backface culling, 只做了view volumn culling
-        //三角形细分的clip没做
-        if (elements.length % 3 != 0){
-            return
-        }
-        let cameraTransform = this.camera.vp
-        for (let vert of va) {
-            if (vert.posProject == null) {
-                vert.posProject = new Vector()
-            }
-            vert.posWorld.transform(cameraTransform, vert.posProject)
-            vert.rhw = 1/vert.posProject.w //w等同于投影前的视图坐标的z
-            vert.posProject.homogenenize()
-            if (Utils.isInsideViewVolumn(vert.posProject)){
-                if (vert.posScreen == null){
-                    vert.posScreen = new Vector()
-                }
-                Utils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
-            }
-        }
-        for (let i=0;i<elements.length;i+=3) {
-            let trianglePoints = [va[elements[i]], va[elements[i+1]], va[elements[i+2]]]
-            let culling = false
-            for (let p of trianglePoints) {
-                //view volumn culling
-                if (!Utils.isInsideViewVolumn(p.posProject) ) {
-                    culling = true
-                    break;
-                }
-            }
-            if (!culling) {
-                this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2])
-            }
-        }
-    }
+    // public drawElements(va:Array<Vertex>, elements:Array<number>) {
+    //     //根据当前的view和project, 对所有三角形进行投影计算
+    //     //对每一个三角形进行光栅化， 然后进行着色，zbuffer和framebuffer赋值
+    //     //没做backface culling, 只做了view volumn culling
+    //     //三角形细分的clip没做
+    //     if (elements.length % 3 != 0){
+    //         return
+    //     }
+    //     let cameraTransform = this.camera.vp
+    //     for (let vert of va) {
+    //         if (vert.posProject == null) {
+    //             vert.posProject = new Vector()
+    //         }
+    //         vert.posWorld.transform(cameraTransform, vert.posProject)
+    //         vert.rhw = 1/vert.posProject.w //w等同于投影前的视图坐标的z
+    //         vert.posProject.homogenenize()
+    //         if (Utils.isInsideViewVolumn(vert.posProject)){
+    //             if (vert.posScreen == null){
+    //                 vert.posScreen = new Vector()
+    //             }
+    //             Utils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
+    //         }
+    //     }
+    //     for (let i=0;i<elements.length;i+=3) {
+    //         let trianglePoints = [va[elements[i]], va[elements[i+1]], va[elements[i+2]]]
+    //         let culling = false
+    //         for (let p of trianglePoints) {
+    //             //view volumn culling
+    //             if (!Utils.isInsideViewVolumn(p.posProject) ) {
+    //                 culling = true
+    //                 break;
+    //             }
+    //         }
+    //         if (!culling) {
+    //             this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2])
+    //         }
+    //     }
+    // }
 
     protected setDefaultCamera() {
         let eye = new Vector(1.5, 0, 3, 1)
@@ -332,6 +355,10 @@ export default class Raster {
 
     public getFrameBuffer() {
         return this.buffer.frameBuffer
+    }
+
+    public setShader(shader:Shader){
+        this.currentShader = shader
     }
 }
 

@@ -539,6 +539,34 @@ exports.Colors = Colors;
 
 /***/ }),
 
+/***/ "./js/core/mesh/shader.js":
+/*!********************************!*\
+  !*** ./js/core/mesh/shader.js ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var Shader = (function () {
+    function Shader(program) {
+        this.program = program;
+        this.vertexInput = { viewProject: null };
+    }
+    Shader.prototype.setViewProject = function (vp) {
+        this.vertexInput.viewProject = vp;
+    };
+    Shader.prototype.vertexShading = function (vertex) {
+        return this.program.vertexShading(vertex, this.vertexInput);
+    };
+    Shader.prototype.fragmentShading = function (context) {
+        return this.program.fragmentShading(context);
+    };
+    return Shader;
+})();
+exports["default"] = Shader;
+//# sourceMappingURL=shader.js.map
+
+/***/ }),
+
 /***/ "./js/core/mesh/texture.js":
 /*!*********************************!*\
   !*** ./js/core/mesh/texture.js ***!
@@ -638,6 +666,7 @@ var Raster = (function () {
         this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
         this.activeTexture = null;
         this.usingMSAA = true;
+        this.currentShader = null;
         this.camera = {
             view: new matrix_1.Matrix(),
             projection: new matrix_1.Matrix(),
@@ -729,7 +758,7 @@ var Raster = (function () {
         return null;
     };
     Raster.prototype.drawTriangle2D = function (v0, v1, v2) {
-        var vs = [v0.posScreen, v1.posScreen, v2.posScreen];
+        var vs = [v0.context.posScreen, v1.context.posScreen, v2.context.posScreen];
         var x0 = vs[0].x, x1 = vs[1].x, x2 = vs[2].x, y0 = vs[0].y, y1 = vs[1].y, y2 = vs[2].y;
         var minX = Math.floor(Math.min(x0, x1, x2));
         var maxX = Math.ceil(Math.max(x0, x1, x2));
@@ -758,17 +787,20 @@ var Raster = (function () {
         if (barycentric == null) {
             return;
         }
-        var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+        var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
         if (this.buffer.ztest(x, y, rhw)) {
             var w = 1 / (rhw != 0 ? rhw : 1);
-            var a = barycentric[0] * w * v0.rhw;
-            var b = barycentric[1] * w * v1.rhw;
-            var c = barycentric[2] * w * v2.rhw;
+            var a = barycentric[0] * w * v0.context.rhw;
+            var b = barycentric[1] * w * v1.context.rhw;
+            var c = barycentric[2] * w * v2.context.rhw;
             var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
             var uv = { u: 0, v: 0 };
             color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
             utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
-            var finalColor = this.fragmentShading(x, y, tempColor, uv);
+            var context = {
+                x: x, y: y, color: tempColor, uv: uv, texture: this.activeTexture, normal: null
+            };
+            var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor);
                 this.buffer.setZ(x, y, rhw);
@@ -783,7 +815,7 @@ var Raster = (function () {
             var px = p[0], py = p[1];
             var barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
             if (barycentric != null) {
-                var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+                var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
                 if (this.buffer.ztest(x, y, rhw, i)) {
                     testResults.push({
                         barycentric: barycentric,
@@ -803,16 +835,19 @@ var Raster = (function () {
                 fx = testResults[0].x;
                 fy = testResults[0].y;
             }
-            var rhw = utils_1["default"].getInterpValue3(v0.rhw, v1.rhw, v2.rhw, barycentric[0], barycentric[1], barycentric[2]);
+            var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
             var w = 1 / (rhw != 0 ? rhw : 1);
-            var a = barycentric[0] * w * v0.rhw;
-            var b = barycentric[1] * w * v1.rhw;
-            var c = barycentric[2] * w * v2.rhw;
+            var a = barycentric[0] * w * v0.context.rhw;
+            var b = barycentric[1] * w * v1.context.rhw;
+            var c = barycentric[2] * w * v2.context.rhw;
             var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
             var uv = { u: 0, v: 0 };
             color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
             utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
-            var finalColor = this.fragmentShading(fx, fy, tempColor, uv);
+            var context = {
+                x: fx, y: fy, color: tempColor, uv: uv, texture: this.activeTexture, normal: null
+            };
+            var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 for (var _i = 0; _i < testResults.length; _i++) {
                     var result = testResults[_i];
@@ -824,13 +859,6 @@ var Raster = (function () {
                 this.buffer.applyMSAAFilter(x, y);
             }
         }
-    };
-    Raster.prototype.fragmentShading = function (x, y, color, uv) {
-        if (this.activeTexture != null) {
-            var tex = this.activeTexture.sample(uv);
-            return color_1.Colors.multiplyColor(tex, color, tex);
-        }
-        return color;
     };
     Raster.prototype.setActiveTexture = function (texture) {
         this.activeTexture = texture;
@@ -844,42 +872,36 @@ var Raster = (function () {
             this.buffer.setColor(x, y, color, index);
         }
     };
-    Raster.prototype.drawElements = function (va, elements) {
-        if (elements.length % 3 != 0) {
+    Raster.prototype.drawTriangle = function (va) {
+        if (va.length % 3 != 0) {
             return;
         }
-        var cameraTransform = this.camera.vp;
+        this.currentShader.setViewProject(this.camera.vp);
         for (var _i = 0; _i < va.length; _i++) {
-            var vert = va[_i];
-            if (vert.posProject == null) {
-                vert.posProject = new vector_1.Vector();
-            }
-            vert.posWorld.transform(cameraTransform, vert.posProject);
-            vert.rhw = 1 / vert.posProject.w;
-            vert.posProject.homogenenize();
-            if (utils_1["default"].isInsideViewVolumn(vert.posProject)) {
-                if (vert.posScreen == null) {
-                    vert.posScreen = new vector_1.Vector();
-                }
-                utils_1["default"].convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height);
+            var vertex = va[_i];
+            vertex.context = {
+                posProject: new vector_1.Vector(),
+                posScreen: new vector_1.Vector(),
+                rhw: 1
+            };
+            this.currentShader.vertexShading(vertex);
+            vertex.context.rhw = 1 / vertex.context.posProject.w;
+            vertex.context.posProject.homogenenize();
+        }
+        var culling = false;
+        for (var _a = 0; _a < va.length; _a++) {
+            var p = va[_a];
+            if (!utils_1["default"].isInsideViewVolumn(p.context.posProject)) {
+                culling = true;
+                break;
             }
         }
-        for (var i = 0; i < elements.length; i += 3) {
-            var trianglePoints = [va[elements[i]], va[elements[i + 1]], va[elements[i + 2]]];
-            var culling = false;
-            for (var _a = 0; _a < trianglePoints.length; _a++) {
-                var p = trianglePoints[_a];
-                if (p == null) {
-                    console.log("error p", elements[i], elements[i + 1], elements[i + 2]);
-                }
-                if (!utils_1["default"].isInsideViewVolumn(p.posProject)) {
-                    culling = true;
-                    break;
-                }
+        if (!culling) {
+            for (var _b = 0; _b < va.length; _b++) {
+                var p = va[_b];
+                utils_1["default"].convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height);
             }
-            if (!culling) {
-                this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2]);
-            }
+            this.drawTriangle2D(va[0], va[1], va[2]);
         }
     };
     Raster.prototype.setDefaultCamera = function () {
@@ -899,6 +921,9 @@ var Raster = (function () {
     };
     Raster.prototype.getFrameBuffer = function () {
         return this.buffer.frameBuffer;
+    };
+    Raster.prototype.setShader = function (shader) {
+        this.currentShader = shader;
     };
     return Raster;
 })();
@@ -962,11 +987,11 @@ exports["default"] = Utils;
 var vector_1 = __webpack_require__(/*! ../core/math/vector */ "./js/core/math/vector.js");
 var color_1 = __webpack_require__(/*! ../core/mesh/color */ "./js/core/mesh/color.js");
 var texture_1 = __webpack_require__(/*! ../core/mesh/texture */ "./js/core/mesh/texture.js");
+var shader_1 = __webpack_require__(/*! ../core/mesh/shader */ "./js/core/mesh/shader.js");
 var diablo3_pose_obj_1 = __webpack_require__(/*! raw-loader!../../res/diablo3_pose.obj */ "./node_modules/raw-loader/dist/cjs.js!./res/diablo3_pose.obj");
 var DrawMesh = (function () {
     function DrawMesh(renderer) {
-        this.va = null;
-        this.elements = null;
+        this.triangles = [];
         this.texture = this.createTexture();
         this.renderer = renderer;
         this.init();
@@ -981,6 +1006,20 @@ var DrawMesh = (function () {
         var far = 500;
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far);
         this.renderer.setBackgroundColor(color_1.Colors.YELLOW);
+        var shader = new shader_1["default"]({
+            vertexShading: function (vertex, input) {
+                vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                return vertex.context.posProject;
+            },
+            fragmentShading: function (context) {
+                if (context.texture != null) {
+                    var tex = context.texture.sample(context.uv);
+                    return color_1.Colors.multiplyColor(tex, context.color, tex);
+                }
+                return context.color;
+            }
+        });
+        this.renderer.setShader(shader);
         this.loadObj();
     };
     DrawMesh.prototype.loadObj = function () {
@@ -1017,33 +1056,31 @@ var DrawMesh = (function () {
             }
         }
         var vertextList = [];
-        var elements = [];
         for (var _a = 0; _a < vList.length; _a++) {
             var v = vList[_a];
-            vertextList.push({
-                posWorld: new vector_1.Vector(parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3])), color: color_1.Colors.WHITE, uv: { u: 0, v: 0 }
-            });
+            vertextList.push(new vector_1.Vector(parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3])));
         }
+        var vtest = {};
         for (var _b = 0; _b < faceList.length; _b++) {
             var f = faceList[_b];
-            var v1 = f[0];
-            var v2 = f[1];
-            var v3 = f[2];
-            elements.push(parseInt(v1[0]) - 1, parseInt(v2[0]) - 1, parseInt(v3[0]) - 1);
-            if (elements[-1] > vertextList.length) {
-                console.log("obj error, has wrong element", elements[-1], vertextList.length);
-                return;
-            }
+            var v1s = f[0];
+            var v2s = f[1];
+            var v3s = f[2];
+            var v1 = vertextList[parseInt(v1s[0]) - 1];
+            var v2 = vertextList[parseInt(v2s[0]) - 1];
+            var v3 = vertextList[parseInt(v3s[0]) - 1];
+            this.triangles.push([
+                { posWorld: v1, color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
+                { posWorld: v2, color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+                { posWorld: v3, color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
+            ]);
         }
-        this.va = vertextList;
-        this.elements = elements;
-        console.log(vertextList);
     };
     DrawMesh.prototype.draw = function () {
-        if (this.va == null) {
-            return;
+        for (var _i = 0, _a = this.triangles; _i < _a.length; _i++) {
+            var triangle = _a[_i];
+            this.renderer.drawTriangle(triangle);
         }
-        this.renderer.drawElements(this.va, this.elements);
     };
     DrawMesh.prototype.createTexture = function () {
         var texture = new texture_1["default"](256, 256);

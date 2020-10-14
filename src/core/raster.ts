@@ -296,46 +296,6 @@ export default class Raster {
         }
     }
 
-    //va is array of vertex, elements is triangles using vertex index in va
-    // public drawElements(va:Array<Vertex>, elements:Array<number>) {
-    //     //根据当前的view和project, 对所有三角形进行投影计算
-    //     //对每一个三角形进行光栅化， 然后进行着色，zbuffer和framebuffer赋值
-    //     //没做backface culling, 只做了view volumn culling
-    //     //三角形细分的clip没做
-    //     if (elements.length % 3 != 0){
-    //         return
-    //     }
-    //     let cameraTransform = this.camera.vp
-    //     for (let vert of va) {
-    //         if (vert.posProject == null) {
-    //             vert.posProject = new Vector()
-    //         }
-    //         vert.posWorld.transform(cameraTransform, vert.posProject)
-    //         vert.rhw = 1/vert.posProject.w //w等同于投影前的视图坐标的z
-    //         vert.posProject.homogenenize()
-    //         if (Utils.isInsideViewVolumn(vert.posProject)){
-    //             if (vert.posScreen == null){
-    //                 vert.posScreen = new Vector()
-    //             }
-    //             Utils.convertToScreenPos(vert.posProject, vert.posScreen, this.width, this.height)
-    //         }
-    //     }
-    //     for (let i=0;i<elements.length;i+=3) {
-    //         let trianglePoints = [va[elements[i]], va[elements[i+1]], va[elements[i+2]]]
-    //         let culling = false
-    //         for (let p of trianglePoints) {
-    //             //view volumn culling
-    //             if (!Utils.isInsideViewVolumn(p.posProject) ) {
-    //                 culling = true
-    //                 break;
-    //             }
-    //         }
-    //         if (!culling) {
-    //             this.drawTriangle2D(trianglePoints[0], trianglePoints[1], trianglePoints[2])
-    //         }
-    //     }
-    // }
-
     protected setDefaultCamera() {
         let eye = new Vector(1.5, 0, 3, 1)
         let at = new Vector(0, 0, 0, 1)

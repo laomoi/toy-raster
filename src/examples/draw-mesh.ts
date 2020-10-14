@@ -9,6 +9,10 @@ import Shader, { VertexShaderInput, ShaderContext } from "../core/mesh/shader"
 
 
 import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
+import diffuseBuffer from 'raw-loader!../../res/diablo3_pose_diffuse.bmp'
+import normalBuffer from 'raw-loader!../../res/diablo3_pose_nm.bmp'
+import specBuffer from 'raw-loader!../../res/diablo3_pose_spec.bmp'
+
 
 
 
@@ -37,7 +41,6 @@ export default class DrawMesh implements IExample{
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
-                    
                     vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
                     return vertex.context.posProject
                 },
@@ -56,7 +59,8 @@ export default class DrawMesh implements IExample{
     }
 
     protected loadObj() {
-
+      // let result = new BmpDecoder(diffuseBuffer)
+       // console.log(result)
         // let buffer = require('arraybuffer-loader!../../res/diablo3_pose.obj')
         // let array = new Uint8Array(buffer)
         // array.toString

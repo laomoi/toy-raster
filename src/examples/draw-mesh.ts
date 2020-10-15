@@ -9,20 +9,19 @@ import Shader, { VertexShaderInput, ShaderContext } from "../core/mesh/shader"
 
 
 import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
-import diffuseBuffer from 'raw-loader!../../res/diablo3_pose_diffuse.bmp'
-import normalBuffer from 'raw-loader!../../res/diablo3_pose_nm.bmp'
-import specBuffer from 'raw-loader!../../res/diablo3_pose_spec.bmp'
+import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
+// import normalBuffer from 'raw-loader!../../res/diablo3_pose_nm.bmp'
+// import specBuffer from 'raw-loader!../../res/diablo3_pose_spec.bmp'
 
 
 
 
 export default class DrawMesh implements IExample{
-    protected texture:Texture
     protected renderer:Raster
 
     protected triangles:Array<any> = []
+    protected diffuseTexture:Texture
     public constructor(renderer:Raster) {
-        this.texture = this.createTexture()
         this.renderer = renderer
         this.init()
     }
@@ -58,12 +57,38 @@ export default class DrawMesh implements IExample{
         this.loadObj()
     }
 
+    protected base64ToArrayBuffer(base64:string):Uint8Array {
+        var binary_string = window.atob(base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes;
+    }
+    protected createTextureFromBmpBuffer(bmp:any) {
+        let buffer = this.base64ToArrayBuffer(bmp.data)
+        let width = bmp.width
+        let height = bmp.height
+        let texture = new Texture(width, height)
+        for (let y=0;y<height;y++) {
+            for (let x=0;x<width;x++) {
+                let pos = (y*width + x)*4
+                let color:Color = {
+                    r: buffer[pos],
+                    g: buffer[pos+1],
+                    b: buffer[pos+2],
+                    a: buffer[pos+3],
+                }
+                texture.setPixel(x, y, color)
+            }
+        }
+        return texture
+    }
     protected loadObj() {
-      // let result = new BmpDecoder(diffuseBuffer)
-       // console.log(result)
-        // let buffer = require('arraybuffer-loader!../../res/diablo3_pose.obj')
-        // let array = new Uint8Array(buffer)
-        // array.toString
+        this.diffuseTexture = this.createTextureFromBmpBuffer(diffuseBuffer)
+        console.log(this.diffuseTexture)
+        
         let lines:Array<string> = objBuffer.split(/\r\n|\n/)
         let vList:Array<any> =[]
         let uvList:Array<any> =[]
@@ -117,24 +142,49 @@ export default class DrawMesh implements IExample{
     }
 
     public draw() :void{
-        for (let triangle of this.triangles) {
-            this.renderer.drawTriangle(triangle)
+        // for (let triangle of this.triangles) {
+        //     this.renderer.drawTriangle(triangle)
+        // }
+        let va:Array<Vector> = [
+            new Vector(-1,-1,1),
+            new Vector(1,-1,1), 
+            new Vector(1,1,1),
+            new Vector(-1,1,1), 
+            new Vector(-1,-1,-1), 
+            new Vector(1,-1,-1),
+            new Vector(1,1,-1),
+            new Vector(-1,1,-1),
+        ] //立方体8个顶点
+        let elements = [
+            0, 1, 2, //front
+            2, 3, 0, 
+            // 7, 6, 5,  //back
+            // 5, 4, 7, 
+            // 0, 4, 5,  //bottom
+            // 5, 1, 0, 
+            // 1, 5, 6, //right
+            // 6, 2, 1, 
+            // 2, 6, 7,  //top
+            // 7, 3, 2, 
+            // 3, 7, 4,   //left
+            // 4, 0, 3,  
+
+        ] //24个三角形,立方体外表面
+
+        this.renderer.setActiveTexture(this.diffuseTexture)
+
+        for (let e=0;e<elements.length;e+=6) {
+            this.renderer.drawTriangle([
+                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
+                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
+                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
+            ])
+            this.renderer.drawTriangle([
+                {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
+                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
+                {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
+            ])
         }
     }
 
-    protected createTexture(){
-        let texture = new Texture(256, 256)
-        for (let i=0;i<256;i++) {
-            for (let j=0;j<256;j++) {
-                let x = Math.floor(i/32)
-                let y = Math.floor(j/32)
-                if ((x+y) % 2 == 0) {
-                    texture.setPixel(j, i, Colors.BLUE)
-                } else {
-                    texture.setPixel(j, i, Colors.WHITE)
-                }
-            }
-        }
-        return texture
-    }
 }

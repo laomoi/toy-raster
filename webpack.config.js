@@ -8,5 +8,18 @@ module.exports = {
         path: path.join(__dirname, './out/')
     },
     mode: "development",
+    module: {
+        rules: [
+            {
+            test: /\.png$/,
+            use: [
+                {
+                    loader: path.resolve('loaders/bmp-loader.js'),
+                    options: {}
+                }
+            ]
+            }
+        ]
+    }
 };
  

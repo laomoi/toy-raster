@@ -6,11 +6,14 @@
   "license": "CC0-1.0",
   "devDependencies": {
     "arraybuffer-loader": "^1.0.8",
+    "bmp-js": "^0.1.0",
+    "image-decode": "^1.2.2",
     "tsc": "^1.20150623.0",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
+    "fast-png": "^5.0.2",
     "raw-loader": "^4.0.2"
   }
 }

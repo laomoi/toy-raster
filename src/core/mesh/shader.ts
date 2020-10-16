@@ -13,7 +13,6 @@ export interface ShaderContext {
     y:number,
     color?:Color,
     uv?:UV,
-    texture?:Texture,
     normal?:Vector,
 }
 

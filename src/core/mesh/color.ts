@@ -14,6 +14,7 @@ export class Colors {
     public static BLUE:Color =  {r:0, g:0, b:255, a:255}
     public static GREEN:Color =  {r:0, g:255, b:0, a:255}
     public static YELLOW:Color =  {r:255, g:255, b:0, a:255}
+    public static GRAY:Color =  {r:100, g:100, b:100, a:255}
 
     public static clone(color:Color):Color{
         return {r:color.r, g:color.g, b:color.b, a:color.a}

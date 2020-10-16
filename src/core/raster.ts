@@ -21,7 +21,6 @@ export default class Raster {
     // public frameBuffer:Uint8Array = null
     protected buffer:Buffer = null
     protected backgroundColor:Color = Colors.clone(Colors.BLACK)
-    protected activeTexture:Texture = null
     protected usingMSAA:boolean = true //使用2x2 grid的MSAA抗锯齿
     protected currentShader:Shader = null
 
@@ -171,13 +170,17 @@ export default class Raster {
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
             let c = barycentric[2]*w*v2.context.rhw
-            let tempColor:Color = Colors.clone(Colors.WHITE)
-            let uv:UV = {u:0, v:0}
-            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
-            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
+       
             let context:ShaderContext = {
-                x:x,y:y, color:tempColor,uv:uv,texture:this.activeTexture, normal:null
+                x:x,
+                y:y, 
+                color:Colors.clone(Colors.WHITE),
+                uv:{u:0, v:0}, 
+                normal:new Vector()
             }
+            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
+            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
+            Utils.getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
             let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor)
@@ -223,14 +226,18 @@ export default class Raster {
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
             let c = barycentric[2]*w*v2.context.rhw
-            let tempColor:Color = Colors.clone(Colors.WHITE)
-            let uv:UV = {u:0, v:0}
-            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor)
-            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv)
-
+            
             let context:ShaderContext = {
-                x:fx,y:fy, color:tempColor,uv:uv,texture:this.activeTexture, normal:null
+                x:fx,
+                y:fy, 
+                color:Colors.clone(Colors.WHITE),
+                uv:{u:0, v:0}, 
+                normal:new Vector()
             }
+            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
+            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
+            Utils.getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
+
             let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
                 for (let result of testResults) {
@@ -243,11 +250,7 @@ export default class Raster {
             }
         }
     }
-    
-  
-    public setActiveTexture(texture:Texture) {
-        this.activeTexture = texture
-    }
+
 
     public setBackgroundColor(color:Color) {
         this.backgroundColor = Colors.clone(color)

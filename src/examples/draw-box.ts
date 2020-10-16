@@ -26,7 +26,7 @@ export default class DrawBox implements IExample{
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
         this.renderer.setBackgroundColor(Colors.YELLOW)
-
+        let texture = this.texture
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
@@ -35,11 +35,8 @@ export default class DrawBox implements IExample{
                     return vertex.context.posProject
                 },
                 fragmentShading: function(context:ShaderContext):Color {
-                    if (context.texture != null) {
-                        let tex = context.texture.sample(context.uv)
-                        return Colors.multiplyColor(tex, context.color, tex)
-                    } 
-                    return context.color
+                    let tex = texture.sample(context.uv)
+                    return Colors.multiplyColor(tex, context.color, tex)
                 }
             }
         )
@@ -47,7 +44,6 @@ export default class DrawBox implements IExample{
     }
 
     public draw() :void{
-
         let va:Array<Vector> = [
             new Vector(-1,-1,1),
             new Vector(1,-1,1), 
@@ -74,7 +70,6 @@ export default class DrawBox implements IExample{
 
         ] //24个三角形,立方体外表面
 
-        this.renderer.setActiveTexture(this.texture)
 
         for (let e=0;e<elements.length;e+=6) {
             this.renderer.drawTriangle([
@@ -84,7 +79,7 @@ export default class DrawBox implements IExample{
             ])
             this.renderer.drawTriangle([
                 {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
-                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
+                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:{u:0, v:1}}, 
                 {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
             ])
         }

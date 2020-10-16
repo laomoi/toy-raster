@@ -1,6 +1,6 @@
 import { Vector } from "../core/math/vector"
 import { Color, Colors } from "../core/mesh/color"
-import Texture from "../core/mesh/texture"
+import Texture, { UV } from "../core/mesh/texture"
 import { Vertex } from "../core/mesh/vertex"
 import Raster from "../core/raster"
 import { IExample } from "../main"
@@ -19,7 +19,7 @@ import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
 export default class DrawMesh implements IExample{
     protected renderer:Raster
 
-    protected triangles:Array<any> = []
+    protected triangles:Array<Array<Vertex>> = []
     protected diffuseTexture:Texture
     public constructor(renderer:Raster) {
         this.renderer = renderer
@@ -28,7 +28,7 @@ export default class DrawMesh implements IExample{
 
     
     protected init() {
-        let eye = new Vector(1.5, 0, 2.5, 1)
+        let eye = new Vector(0.5, 0, 2.0, 1)
         let at = new Vector(0, 0, 0, 1)
         let up = new Vector(0, 1, 0, 1)
         let fovy = Math.PI / 2
@@ -36,7 +36,14 @@ export default class DrawMesh implements IExample{
         let near = 1
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
-        this.renderer.setBackgroundColor(Colors.YELLOW)
+        this.renderer.setBackgroundColor(Colors.GRAY)
+        this.loadObj()
+        this.loadTextures()
+
+
+        //shader
+        let lightDirNormalize:Vector = (new Vector(1, 1, 0.7)).normalize()
+        let diffuseTexture = this.diffuseTexture
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
@@ -44,17 +51,19 @@ export default class DrawMesh implements IExample{
                     return vertex.context.posProject
                 },
                 fragmentShading: function(context:ShaderContext):Color {
-                    if (context.texture != null) {
-                        let tex = context.texture.sample(context.uv)
-                        return Colors.multiplyColor(tex, context.color, tex)
-                    } 
-                    return context.color
+                    let diffuse = diffuseTexture.sample(context.uv)
+                    Colors.multiplyColor(diffuse, context.color, diffuse)
+
+                    let intense = context.normal.normalize().dot(lightDirNormalize)
+                    // diffuse.r *= intense
+                    // diffuse.g *= intense
+                    // diffuse.b *= intense
+                    // diffuse.a *= intense
+                    return diffuse
                 }
             }
         )
         this.renderer.setShader(shader)
-
-        this.loadObj()
     }
 
     protected base64ToArrayBuffer(base64:string):Uint8Array {
@@ -73,7 +82,7 @@ export default class DrawMesh implements IExample{
         let texture = new Texture(width, height)
         for (let y=0;y<height;y++) {
             for (let x=0;x<width;x++) {
-                let pos = (y*width + x)*4
+                let pos = ((height-y-1)*width + x)*4  //webgl中 v坐标向下，把纹理上下反一下
                 let color:Color = {
                     r: buffer[pos],
                     g: buffer[pos+1],
@@ -85,14 +94,17 @@ export default class DrawMesh implements IExample{
         }
         return texture
     }
-    protected loadObj() {
+
+    protected loadTextures() {
         this.diffuseTexture = this.createTextureFromBmpBuffer(diffuseBuffer)
-        console.log(this.diffuseTexture)
+    }
+
+    protected loadObj() {
         
         let lines:Array<string> = objBuffer.split(/\r\n|\n/)
-        let vList:Array<any> =[]
-        let uvList:Array<any> =[]
-        let normalList:Array<any> =[]
+        let vList:Array<Vector> =[]
+        let uvList:Array<UV> =[]
+        let normalList:Array<Vector> =[]
         let faceList:Array<any> =[]
 
         for (let line of lines) {
@@ -100,14 +112,14 @@ export default class DrawMesh implements IExample{
                 if (line.charAt(0) == "#"){
                     continue
                 }
-                let vals = line.split(" ")
+                let vals = line.split(/\s+/)
                 let t = vals[0]
                 if (t == "v" && vals.length>=4) {
-                    vList.push(vals)
+                    vList.push(new Vector(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
                 } else if (t == "vt" && vals.length>=3) {
-                    uvList.push(vals)
+                    uvList.push({ u: parseFloat(vals[1]), v:parseFloat(vals[2])})
                 }else if (t == "vn" && vals.length>=4) {
-                    normalList.push(vals)
+                    normalList.push(new Vector(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
                 }else if (t == "f" && vals.length>=4) {
                     let fvals = [
                         vals[1].split("/"),
@@ -118,73 +130,38 @@ export default class DrawMesh implements IExample{
                 }
             }
         }
-        //mesh 
-        let vertextList:Array<Vector> = []
-        for (let v of vList){
-            vertextList.push(new Vector(parseFloat(v[1]),parseFloat(v[2]), parseFloat(v[3])))
-        }
-        let vtest:any = {}
+       
         for (let f of faceList){
             let v1s = f[0]
             let v2s = f[1]
             let v3s = f[2]
             // vertex/uv/normal
-            let v1 = vertextList[ parseInt(v1s[0]) -1 ]
-            let v2 = vertextList[ parseInt(v2s[0]) -1 ]
-            let v3 = vertextList[ parseInt(v3s[0]) -1 ]
+            let v1 = vList[ parseInt(v1s[0]) -1 ]
+            let v2 = vList[ parseInt(v2s[0]) -1 ]
+            let v3 = vList[ parseInt(v3s[0]) -1 ]
+
+            let uv1 = uvList[ parseInt(v1s[1]) -1 ]
+            let uv2 = uvList[ parseInt(v2s[1]) -1 ]
+            let uv3 = uvList[ parseInt(v3s[1]) -1 ]
+
+            let n1 = normalList[ parseInt(v1s[2]) -1 ]
+            let n2 = normalList[ parseInt(v2s[2]) -1 ]
+            let n3 = normalList[ parseInt(v3s[2]) -1 ]
+
 
             this.triangles.push([
-                {posWorld:v1, color:Colors.WHITE, uv:{u:1, v:1}}, 
-                {posWorld:v2, color:Colors.WHITE, uv:{u:1, v:0}}, 
-                {posWorld:v3, color:Colors.WHITE, uv:{u:0, v:0}}, 
+                {posWorld:v1, color:Colors.WHITE, uv:uv1, normal:n1}, 
+                {posWorld:v2, color:Colors.WHITE, uv:uv2, normal:n2}, 
+                {posWorld:v3, color:Colors.WHITE, uv:uv3, normal:n3}, 
             ])
         }
     }
 
     public draw() :void{
-        // for (let triangle of this.triangles) {
-        //     this.renderer.drawTriangle(triangle)
-        // }
-        let va:Array<Vector> = [
-            new Vector(-1,-1,1),
-            new Vector(1,-1,1), 
-            new Vector(1,1,1),
-            new Vector(-1,1,1), 
-            new Vector(-1,-1,-1), 
-            new Vector(1,-1,-1),
-            new Vector(1,1,-1),
-            new Vector(-1,1,-1),
-        ] //立方体8个顶点
-        let elements = [
-            0, 1, 2, //front
-            2, 3, 0, 
-            // 7, 6, 5,  //back
-            // 5, 4, 7, 
-            // 0, 4, 5,  //bottom
-            // 5, 1, 0, 
-            // 1, 5, 6, //right
-            // 6, 2, 1, 
-            // 2, 6, 7,  //top
-            // 7, 3, 2, 
-            // 3, 7, 4,   //left
-            // 4, 0, 3,  
-
-        ] //24个三角形,立方体外表面
-
-        this.renderer.setActiveTexture(this.diffuseTexture)
-
-        for (let e=0;e<elements.length;e+=6) {
-            this.renderer.drawTriangle([
-                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
-                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
-                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
-            ])
-            this.renderer.drawTriangle([
-                {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
-                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
-                {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
-            ])
+        for (let triangle of this.triangles) {
+            this.renderer.drawTriangle(triangle)
         }
+        
     }
 
 }

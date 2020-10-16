@@ -18,17 +18,15 @@ var DrawBox = (function () {
         var far = 500;
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far);
         this.renderer.setBackgroundColor(color_1.Colors.YELLOW);
+        var texture = this.texture;
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
                 vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
                 return vertex.context.posProject;
             },
             fragmentShading: function (context) {
-                if (context.texture != null) {
-                    var tex = context.texture.sample(context.uv);
-                    return color_1.Colors.multiplyColor(tex, context.color, tex);
-                }
-                return context.color;
+                var tex = texture.sample(context.uv);
+                return color_1.Colors.multiplyColor(tex, context.color, tex);
             }
         });
         this.renderer.setShader(shader);
@@ -58,7 +56,6 @@ var DrawBox = (function () {
             3, 7, 4,
             4, 0, 3,
         ];
-        this.renderer.setActiveTexture(this.texture);
         for (var e = 0; e < elements.length; e += 6) {
             this.renderer.drawTriangle([
                 { posWorld: va[elements[e]], color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
@@ -67,7 +64,7 @@ var DrawBox = (function () {
             ]);
             this.renderer.drawTriangle([
                 { posWorld: va[elements[e + 3]], color: color_1.Colors.WHITE, uv: { u: 1, v: 1 } },
-                { posWorld: va[elements[e + 4]], color: color_1.Colors.WHITE, uv: { u: 1, v: 0 } },
+                { posWorld: va[elements[e + 4]], color: color_1.Colors.WHITE, uv: { u: 0, v: 1 } },
                 { posWorld: va[elements[e + 5]], color: color_1.Colors.WHITE, uv: { u: 0, v: 0 } },
             ]);
         }

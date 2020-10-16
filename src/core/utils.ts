@@ -28,6 +28,12 @@ export default class Utils {
         dstUV.u = Utils.getInterpValue3(uv1.u, uv2.u, uv3.u, a, b, c)
         dstUV.v = Utils.getInterpValue3(uv1.v, uv2.v, uv3.v, a, b, c)
     }
+
+    public static getInterpVector(v1:Vector, v2:Vector, v3:Vector, a:number, b:number, c:number, dst:Vector) {
+        dst.x = Utils.getInterpValue3(v1.x, v2.x, v3.x, a, b, c)
+        dst.y = Utils.getInterpValue3(v1.y, v2.y, v3.y, a, b, c)
+        dst.z = Utils.getInterpValue3(v1.z, v2.z, v3.z, a, b, c)
+    }
     
     public static getInterpValue3(v1:number, v2:number, v3:number,  a:number, b:number, c:number) {
         return v1*a + v2*b + v3*c

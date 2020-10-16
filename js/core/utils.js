@@ -23,6 +23,11 @@ var Utils = (function () {
         dstUV.u = Utils.getInterpValue3(uv1.u, uv2.u, uv3.u, a, b, c);
         dstUV.v = Utils.getInterpValue3(uv1.v, uv2.v, uv3.v, a, b, c);
     };
+    Utils.getInterpVector = function (v1, v2, v3, a, b, c, dst) {
+        dst.x = Utils.getInterpValue3(v1.x, v2.x, v3.x, a, b, c);
+        dst.y = Utils.getInterpValue3(v1.y, v2.y, v3.y, a, b, c);
+        dst.z = Utils.getInterpValue3(v1.z, v2.z, v3.z, a, b, c);
+    };
     Utils.getInterpValue3 = function (v1, v2, v3, a, b, c) {
         return v1 * a + v2 * b + v3 * c;
     };

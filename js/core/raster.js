@@ -8,7 +8,6 @@ var Raster = (function () {
         if (usingMSAA === void 0) { usingMSAA = true; }
         this.buffer = null;
         this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
-        this.activeTexture = null;
         this.usingMSAA = true;
         this.currentShader = null;
         this.camera = {
@@ -137,13 +136,16 @@ var Raster = (function () {
             var a = barycentric[0] * w * v0.context.rhw;
             var b = barycentric[1] * w * v1.context.rhw;
             var c = barycentric[2] * w * v2.context.rhw;
-            var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
-            var uv = { u: 0, v: 0 };
-            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
-            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
             var context = {
-                x: x, y: y, color: tempColor, uv: uv, texture: this.activeTexture, normal: null
+                x: x,
+                y: y,
+                color: color_1.Colors.clone(color_1.Colors.WHITE),
+                uv: { u: 0, v: 0 },
+                normal: new vector_1.Vector()
             };
+            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
+            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
+            utils_1["default"].getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
             var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor);
@@ -184,13 +186,16 @@ var Raster = (function () {
             var a = barycentric[0] * w * v0.context.rhw;
             var b = barycentric[1] * w * v1.context.rhw;
             var c = barycentric[2] * w * v2.context.rhw;
-            var tempColor = color_1.Colors.clone(color_1.Colors.WHITE);
-            var uv = { u: 0, v: 0 };
-            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, tempColor);
-            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, uv);
             var context = {
-                x: fx, y: fy, color: tempColor, uv: uv, texture: this.activeTexture, normal: null
+                x: fx,
+                y: fy,
+                color: color_1.Colors.clone(color_1.Colors.WHITE),
+                uv: { u: 0, v: 0 },
+                normal: new vector_1.Vector()
             };
+            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
+            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
+            utils_1["default"].getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
             var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 for (var _i = 0; _i < testResults.length; _i++) {
@@ -203,9 +208,6 @@ var Raster = (function () {
                 this.buffer.applyMSAAFilter(x, y);
             }
         }
-    };
-    Raster.prototype.setActiveTexture = function (texture) {
-        this.activeTexture = texture;
     };
     Raster.prototype.setBackgroundColor = function (color) {
         this.backgroundColor = color_1.Colors.clone(color);

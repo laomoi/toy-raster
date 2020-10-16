@@ -2,7 +2,7 @@ import Buffer from "./shading/buffer"
 import { Matrix } from "./math/matrix"
 import { Vector4 } from "./math/vector4"
 import { Color, Colors } from "./shading/color"
-import Shader, { IShaderProgram, ShaderContext } from "./shading/shader"
+import Shader, { IShaderProgram, FragmentInput } from "./shading/shader"
 import { Vertex } from "./shading/vertex"
 import MathUtils from "./math/math-utils"
 import { Vector2 } from "./math/vector2"
@@ -156,6 +156,27 @@ export default class Raster {
         }
     }
 
+    protected createFragmentInput(x:number, y:number, v0:Vertex, v1:Vertex, v2:Vertex, a:number, b:number, c:number) {
+        let context:FragmentInput = {
+            x:x,
+            y:y, 
+            color:Colors.clone(Colors.WHITE),
+            varyingVec2Dict:{},
+            varyingVec4Dict:{},
+        }
+        //插值
+        Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
+        for (let k in v0.context.varyingVec2Dict) {
+            context.varyingVec2Dict[k] = Vector2.getInterpValue3(v0.context.varyingVec2Dict[k], 
+                v1.context.varyingVec2Dict[k], v2.context.varyingVec2Dict[k], a, b, c)
+        }
+        for (let k in v0.context.varyingVec4Dict) {
+            context.varyingVec4Dict[k] = Vector4.getInterpValue3(v0.context.varyingVec4Dict[k], 
+                v1.context.varyingVec4Dict[k], v2.context.varyingVec4Dict[k], a, b, c)
+        }
+        return context
+    }
+
     protected rasterizePixelInTriangle(x:number, y:number, vs:Array<Vector4>, v0:Vertex, v1:Vertex, v2:Vertex,
         fAlpha:number, fBelta:number, fGama:number, fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
         let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
@@ -170,18 +191,8 @@ export default class Raster {
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
             let c = barycentric[2]*w*v2.context.rhw
-       
-            let context:ShaderContext = {
-                x:x,
-                y:y, 
-                color:Colors.clone(Colors.WHITE),
-                uv:new Vector2(), 
-                normal:new Vector4()
-            }
-            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
-            Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
-            Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
-            let finalColor = this.currentShader.fragmentShading(context)
+            let input:FragmentInput = this.createFragmentInput(x, y, v0, v1, v2, a, b, c) 
+            let finalColor = this.currentShader.fragmentShading(input)
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor)
                 this.buffer.setZ(x, y, rhw)
@@ -226,19 +237,8 @@ export default class Raster {
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
             let c = barycentric[2]*w*v2.context.rhw
-            
-            let context:ShaderContext = {
-                x:fx,
-                y:fy, 
-                color:Colors.clone(Colors.WHITE),
-                uv:new Vector2(), 
-                normal:new Vector4()
-            }
-            Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
-            Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
-            Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
-
-            let finalColor = this.currentShader.fragmentShading(context)
+            let input:FragmentInput = this.createFragmentInput(fx, fy, v0, v1, v2, a, b, c) 
+            let finalColor = this.currentShader.fragmentShading(input)
             if (finalColor.a > 0) {
                 for (let result of testResults) {
                     let index = result.index
@@ -272,7 +272,9 @@ export default class Raster {
             vertex.context = {
                 posProject: new Vector4(),
                 posScreen: new Vector4(),
-                rhw: 1
+                rhw: 1,
+                varyingVec2Dict: {},
+                varyingVec4Dict: {},
             }
             this.currentShader.vertexShading(vertex)      
             vertex.context.rhw = 1/vertex.context.posProject.w //w等同于投影前的视图坐标的z

@@ -3,9 +3,11 @@ var color_1 = require("../core/shading/color");
 var texture_1 = require("../core/shading/texture");
 var shader_1 = require("../core/shading/shader");
 var vector2_1 = require("../core/math/vector2");
+var math_utils_1 = require("../core/math/math-utils");
 var diablo3_pose_obj_1 = require('raw-loader!../../res/diablo3_pose.obj');
 var diablo3_pose_diffuse_png_1 = require('../../res/diablo3_pose_diffuse.png');
-var math_utils_1 = require("../core/math/math-utils");
+var diablo3_pose_nm_png_1 = require('../../res/diablo3_pose_nm.png');
+var diablo3_pose_spec_png_1 = require('../../res/diablo3_pose_spec.png');
 var DrawMesh = (function () {
     function DrawMesh(renderer) {
         this.triangles = [];
@@ -29,13 +31,15 @@ var DrawMesh = (function () {
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
                 vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                vertex.context.varyingVec2Dict[shader_1.ShaderVarying.UV] = vertex.uv;
+                vertex.context.varyingVec4Dict[shader_1.ShaderVarying.NORMAL] = vertex.normal;
                 return vertex.context.posProject;
             },
-            fragmentShading: function (context) {
-                var diffuse = diffuseTexture.sample(context.uv);
-                color_1.Colors.multiplyColor(diffuse, context.color, diffuse);
-                var c = context.normal.normalize().dot(lightDirNormalize);
-                c = math_utils_1["default"].clamp(c, 0, 1);
+            fragmentShading: function (input) {
+                var diffuse = diffuseTexture.sample(input.varyingVec2Dict[shader_1.ShaderVarying.UV]);
+                color_1.Colors.multiplyColor(diffuse, input.color, diffuse);
+                var c = input.varyingVec4Dict[shader_1.ShaderVarying.NORMAL].normalize().dot(lightDirNormalize);
+                c = math_utils_1["default"].clamp(c + 0.15, 0, 1);
                 diffuse.r *= c;
                 diffuse.g *= c;
                 diffuse.b *= c;
@@ -74,6 +78,8 @@ var DrawMesh = (function () {
     };
     DrawMesh.prototype.loadTextures = function () {
         this.diffuseTexture = this.createTextureFromBmpBuffer(diablo3_pose_diffuse_png_1["default"]);
+        this.normalTexture = this.createTextureFromBmpBuffer(diablo3_pose_nm_png_1["default"]);
+        this.specTexture = this.createTextureFromBmpBuffer(diablo3_pose_spec_png_1["default"]);
     };
     DrawMesh.prototype.loadObj = function () {
         var lines = diablo3_pose_obj_1["default"].split(/\r\n|\n/);

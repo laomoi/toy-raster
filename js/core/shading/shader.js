@@ -1,3 +1,11 @@
+var ShaderVarying = (function () {
+    function ShaderVarying() {
+    }
+    ShaderVarying.NORMAL = "normal";
+    ShaderVarying.UV = "uv";
+    return ShaderVarying;
+})();
+exports.ShaderVarying = ShaderVarying;
 var Shader = (function () {
     function Shader(program) {
         this.program = program;
@@ -9,8 +17,8 @@ var Shader = (function () {
     Shader.prototype.vertexShading = function (vertex) {
         return this.program.vertexShading(vertex, this.vertexInput);
     };
-    Shader.prototype.fragmentShading = function (context) {
-        return this.program.fragmentShading(context);
+    Shader.prototype.fragmentShading = function (input) {
+        return this.program.fragmentShading(input);
     };
     return Shader;
 })();

@@ -4,27 +4,31 @@ import { Vector4 } from "../math/vector4";
 import { Color } from "./color";
 import { Vertex } from "./vertex";
 
-export interface VertexShaderInput {
+export interface VertexInput {
     viewProject:Matrix
 }
 
-export interface ShaderContext {
+export interface FragmentInput {
     x:number,
     y:number,
     color?:Color,
-    uv?:Vector2,
-    normal?:Vector4,
+    varyingVec2Dict?:{[k:string]:Vector2}, //需要插值的所有vec2
+    varyingVec4Dict?:{[k:string]:Vector4} //需要插值的所有vec4
 }
 
 export interface IShaderProgram {
-    vertexShading(vertex:Vertex, input:VertexShaderInput):Vector4;
-    fragmentShading(context:ShaderContext):Color;
+    vertexShading(vertex:Vertex, input:VertexInput):Vector4;
+    fragmentShading(context:FragmentInput):Color;
+}
+
+export class ShaderVarying {
+    public static NORMAL = "normal"
+    public static UV = "uv"
 }
 
 export default class Shader  {
-
     protected program:IShaderProgram
-    protected vertexInput: VertexShaderInput
+    protected vertexInput: VertexInput
     public constructor(program:IShaderProgram){
         this.program = program
         this.vertexInput = {viewProject:null}
@@ -38,7 +42,7 @@ export default class Shader  {
         return this.program.vertexShading(vertex, this.vertexInput)
     }
 
-    public fragmentShading(context:ShaderContext):Color{
-        return this.program.fragmentShading(context)
+    public fragmentShading(input:FragmentInput):Color{
+        return this.program.fragmentShading(input)
     }
 }

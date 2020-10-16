@@ -1,6 +1,6 @@
 import { Vector4 } from "../core/math/vector4"
 import { Color, Colors } from "../core/shading/color"
-import Shader, { ShaderContext, VertexShaderInput } from "../core/shading/shader"
+import Shader, { FragmentInput, ShaderVarying, VertexInput } from "../core/shading/shader"
 import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
@@ -30,14 +30,14 @@ export default class DrawBox implements IExample{
         let texture = this.texture
         let shader:Shader = new Shader(
             {
-                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector4{
-                    
+                vertexShading: function(vertex:Vertex, input:VertexInput):Vector4{
                     vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
+                    vertex.context.varyingVec2Dict[ShaderVarying.UV] = vertex.uv
                     return vertex.context.posProject
                 },
-                fragmentShading: function(context:ShaderContext):Color {
-                    let tex = texture.sample(context.uv)
-                    return Colors.multiplyColor(tex, context.color, tex)
+                fragmentShading: function(input:FragmentInput):Color {
+                    let tex = texture.sample(input.varyingVec2Dict[ShaderVarying.UV])
+                    return Colors.multiplyColor(tex, input.color, tex)
                 }
             }
         )
@@ -55,6 +55,7 @@ export default class DrawBox implements IExample{
             new Vector4(1,1,-1),
             new Vector4(-1,1,-1),
         ] //立方体8个顶点
+
         let elements = [
             0, 1, 2, //front
             2, 3, 0, 
@@ -68,7 +69,6 @@ export default class DrawBox implements IExample{
             7, 3, 2, 
             3, 7, 4,   //left
             4, 0, 3,  
-
         ] //24个三角形,立方体外表面
 
         let uv00 = new Vector2(0, 0)
@@ -77,9 +77,9 @@ export default class DrawBox implements IExample{
         let uv01 = new Vector2(0, 1)
         for (let e=0;e<elements.length;e+=6) {
             this.renderer.drawTriangle([
-                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv: uv00}, 
-                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv: uv10}, 
-                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv: uv11}, 
+                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv:uv00}, 
+                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv:uv10}, 
+                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv:uv11}, 
             ])
             this.renderer.drawTriangle([
                 {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:uv11}, 

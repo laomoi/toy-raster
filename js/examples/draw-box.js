@@ -23,11 +23,12 @@ var DrawBox = (function () {
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
                 vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                vertex.context.varyingVec2Dict[shader_1.ShaderVarying.UV] = vertex.uv;
                 return vertex.context.posProject;
             },
-            fragmentShading: function (context) {
-                var tex = texture.sample(context.uv);
-                return color_1.Colors.multiplyColor(tex, context.color, tex);
+            fragmentShading: function (input) {
+                var tex = texture.sample(input.varyingVec2Dict[shader_1.ShaderVarying.UV]);
+                return color_1.Colors.multiplyColor(tex, input.color, tex);
             }
         });
         this.renderer.setShader(shader);

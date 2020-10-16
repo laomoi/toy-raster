@@ -126,6 +126,23 @@ var Raster = (function () {
             }
         }
     };
+    Raster.prototype.createFragmentInput = function (x, y, v0, v1, v2, a, b, c) {
+        var context = {
+            x: x,
+            y: y,
+            color: color_1.Colors.clone(color_1.Colors.WHITE),
+            varyingVec2Dict: {},
+            varyingVec4Dict: {}
+        };
+        color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
+        for (var k in v0.context.varyingVec2Dict) {
+            context.varyingVec2Dict[k] = vector2_1.Vector2.getInterpValue3(v0.context.varyingVec2Dict[k], v1.context.varyingVec2Dict[k], v2.context.varyingVec2Dict[k], a, b, c);
+        }
+        for (var k in v0.context.varyingVec4Dict) {
+            context.varyingVec4Dict[k] = vector4_1.Vector4.getInterpValue3(v0.context.varyingVec4Dict[k], v1.context.varyingVec4Dict[k], v2.context.varyingVec4Dict[k], a, b, c);
+        }
+        return context;
+    };
     Raster.prototype.rasterizePixelInTriangle = function (x, y, vs, v0, v1, v2, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest) {
         var barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
         if (barycentric == null) {
@@ -137,17 +154,8 @@ var Raster = (function () {
             var a = barycentric[0] * w * v0.context.rhw;
             var b = barycentric[1] * w * v1.context.rhw;
             var c = barycentric[2] * w * v2.context.rhw;
-            var context = {
-                x: x,
-                y: y,
-                color: color_1.Colors.clone(color_1.Colors.WHITE),
-                uv: new vector2_1.Vector2(),
-                normal: new vector4_1.Vector4()
-            };
-            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
-            vector2_1.Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
-            vector4_1.Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
-            var finalColor = this.currentShader.fragmentShading(context);
+            var input = this.createFragmentInput(x, y, v0, v1, v2, a, b, c);
+            var finalColor = this.currentShader.fragmentShading(input);
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor);
                 this.buffer.setZ(x, y, rhw);
@@ -187,17 +195,8 @@ var Raster = (function () {
             var a = barycentric[0] * w * v0.context.rhw;
             var b = barycentric[1] * w * v1.context.rhw;
             var c = barycentric[2] * w * v2.context.rhw;
-            var context = {
-                x: fx,
-                y: fy,
-                color: color_1.Colors.clone(color_1.Colors.WHITE),
-                uv: new vector2_1.Vector2(),
-                normal: new vector4_1.Vector4()
-            };
-            color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
-            vector2_1.Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
-            vector4_1.Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
-            var finalColor = this.currentShader.fragmentShading(context);
+            var input = this.createFragmentInput(fx, fy, v0, v1, v2, a, b, c);
+            var finalColor = this.currentShader.fragmentShading(input);
             if (finalColor.a > 0) {
                 for (var _i = 0; _i < testResults.length; _i++) {
                     var result = testResults[_i];
@@ -229,7 +228,9 @@ var Raster = (function () {
             vertex.context = {
                 posProject: new vector4_1.Vector4(),
                 posScreen: new vector4_1.Vector4(),
-                rhw: 1
+                rhw: 1,
+                varyingVec2Dict: {},
+                varyingVec4Dict: {}
             };
             this.currentShader.vertexShading(vertex);
             vertex.context.rhw = 1 / vertex.context.posProject.w;

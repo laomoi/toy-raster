@@ -4,7 +4,7 @@ import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
 import { IExample } from "../main"
-import Shader, { VertexShaderInput, ShaderContext } from "../core/shading/shader"
+import Shader, { VertexInput, FragmentInput, ShaderVarying } from "../core/shading/shader"
 import { Vector2 } from "../core/math/vector2"
 
 
@@ -46,21 +46,22 @@ export default class DrawMesh implements IExample{
         this.loadObj()
         this.loadTextures()
 
-
         //shader
         let lightDirNormalize:Vector4 = (new Vector4(1, 1, 0.7)).normalize()
         let diffuseTexture = this.diffuseTexture
         let shader:Shader = new Shader(
             {
-                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector4{
+                vertexShading: function(vertex:Vertex, input:VertexInput):Vector4{
                     vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
+                    vertex.context.varyingVec2Dict[ShaderVarying.UV] = vertex.uv
+                    vertex.context.varyingVec4Dict[ShaderVarying.NORMAL] = vertex.normal
                     return vertex.context.posProject
                 },
-                fragmentShading: function(context:ShaderContext):Color {
-                    let diffuse = diffuseTexture.sample(context.uv)
-                    Colors.multiplyColor(diffuse, context.color, diffuse)
-                    let c = context.normal.normalize().dot(lightDirNormalize)
-                    c = MathUtils.clamp(c, 0, 1)
+                fragmentShading: function(input:FragmentInput):Color {
+                    let diffuse = diffuseTexture.sample(input.varyingVec2Dict[ShaderVarying.UV])
+                    Colors.multiplyColor(diffuse, input.color, diffuse)
+                    let c = input.varyingVec4Dict[ShaderVarying.NORMAL].normalize().dot(lightDirNormalize)
+                    c = MathUtils.clamp(c + 0.15, 0, 1)
                     diffuse.r *= c
                     diffuse.g *= c
                     diffuse.b *= c

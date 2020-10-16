@@ -1,9 +1,11 @@
-var vector_1 = require("../core/math/vector");
-var color_1 = require("../core/mesh/color");
-var texture_1 = require("../core/mesh/texture");
-var shader_1 = require("../core/mesh/shader");
+var vector4_1 = require("../core/math/vector4");
+var color_1 = require("../core/shading/color");
+var texture_1 = require("../core/shading/texture");
+var shader_1 = require("../core/shading/shader");
+var vector2_1 = require("../core/math/vector2");
 var diablo3_pose_obj_1 = require('raw-loader!../../res/diablo3_pose.obj');
 var diablo3_pose_diffuse_png_1 = require('../../res/diablo3_pose_diffuse.png');
+var math_utils_1 = require("../core/math/math-utils");
 var DrawMesh = (function () {
     function DrawMesh(renderer) {
         this.triangles = [];
@@ -11,9 +13,9 @@ var DrawMesh = (function () {
         this.init();
     }
     DrawMesh.prototype.init = function () {
-        var eye = new vector_1.Vector(0.5, 0, 2.0, 1);
-        var at = new vector_1.Vector(0, 0, 0, 1);
-        var up = new vector_1.Vector(0, 1, 0, 1);
+        var eye = new vector4_1.Vector4(0.5, 0, 2.0, 1);
+        var at = new vector4_1.Vector4(0, 0, 0, 1);
+        var up = new vector4_1.Vector4(0, 1, 0, 1);
         var fovy = Math.PI / 2;
         var aspect = this.renderer.width / this.renderer.height;
         var near = 1;
@@ -22,7 +24,7 @@ var DrawMesh = (function () {
         this.renderer.setBackgroundColor(color_1.Colors.GRAY);
         this.loadObj();
         this.loadTextures();
-        var lightDirNormalize = (new vector_1.Vector(1, 1, 0.7)).normalize();
+        var lightDirNormalize = (new vector4_1.Vector4(1, 1, 0.7)).normalize();
         var diffuseTexture = this.diffuseTexture;
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
@@ -32,7 +34,11 @@ var DrawMesh = (function () {
             fragmentShading: function (context) {
                 var diffuse = diffuseTexture.sample(context.uv);
                 color_1.Colors.multiplyColor(diffuse, context.color, diffuse);
-                var intense = context.normal.normalize().dot(lightDirNormalize);
+                var c = context.normal.normalize().dot(lightDirNormalize);
+                c = math_utils_1["default"].clamp(c, 0, 1);
+                diffuse.r *= c;
+                diffuse.g *= c;
+                diffuse.b *= c;
                 return diffuse;
             }
         });
@@ -84,13 +90,13 @@ var DrawMesh = (function () {
                 var vals = line.split(/\s+/);
                 var t = vals[0];
                 if (t == "v" && vals.length >= 4) {
-                    vList.push(new vector_1.Vector(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
+                    vList.push(new vector4_1.Vector4(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
                 }
                 else if (t == "vt" && vals.length >= 3) {
-                    uvList.push({ u: parseFloat(vals[1]), v: parseFloat(vals[2]) });
+                    uvList.push(new vector2_1.Vector2(parseFloat(vals[1]), parseFloat(vals[2])));
                 }
                 else if (t == "vn" && vals.length >= 4) {
-                    normalList.push(new vector_1.Vector(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
+                    normalList.push(new vector4_1.Vector4(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
                 }
                 else if (t == "f" && vals.length >= 4) {
                     var fvals = [

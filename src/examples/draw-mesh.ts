@@ -1,26 +1,32 @@
-import { Vector } from "../core/math/vector"
-import { Color, Colors } from "../core/mesh/color"
-import Texture, { UV } from "../core/mesh/texture"
-import { Vertex } from "../core/mesh/vertex"
+import { Vector4 } from "../core/math/vector4"
+import { Color, Colors } from "../core/shading/color"
+import Texture from "../core/shading/texture"
+import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
 import { IExample } from "../main"
-import Shader, { VertexShaderInput, ShaderContext } from "../core/mesh/shader"
+import Shader, { VertexShaderInput, ShaderContext } from "../core/shading/shader"
+import { Vector2 } from "../core/math/vector2"
+
+
+
+
+import MathUtils from "../core/math/math-utils"
 
 
 
 import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
 import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
-// import normalBuffer from 'raw-loader!../../res/diablo3_pose_nm.bmp'
-// import specBuffer from 'raw-loader!../../res/diablo3_pose_spec.bmp'
-
-
-
+import normalBuffer from '../../res/diablo3_pose_nm.png'
+import specBuffer from '../../res/diablo3_pose_spec.png'
 
 export default class DrawMesh implements IExample{
     protected renderer:Raster
 
     protected triangles:Array<Array<Vertex>> = []
     protected diffuseTexture:Texture
+    protected normalTexture:Texture
+    protected specTexture:Texture
+
     public constructor(renderer:Raster) {
         this.renderer = renderer
         this.init()
@@ -28,9 +34,9 @@ export default class DrawMesh implements IExample{
 
     
     protected init() {
-        let eye = new Vector(0.5, 0, 2.0, 1)
-        let at = new Vector(0, 0, 0, 1)
-        let up = new Vector(0, 1, 0, 1)
+        let eye = new Vector4(0.5, 0, 2.0, 1)
+        let at = new Vector4(0, 0, 0, 1)
+        let up = new Vector4(0, 1, 0, 1)
         let fovy = Math.PI / 2
         let aspect = this.renderer.width / this.renderer.height
         let near = 1
@@ -42,23 +48,22 @@ export default class DrawMesh implements IExample{
 
 
         //shader
-        let lightDirNormalize:Vector = (new Vector(1, 1, 0.7)).normalize()
+        let lightDirNormalize:Vector4 = (new Vector4(1, 1, 0.7)).normalize()
         let diffuseTexture = this.diffuseTexture
         let shader:Shader = new Shader(
             {
-                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
+                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector4{
                     vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
                     return vertex.context.posProject
                 },
                 fragmentShading: function(context:ShaderContext):Color {
                     let diffuse = diffuseTexture.sample(context.uv)
                     Colors.multiplyColor(diffuse, context.color, diffuse)
-
-                    let intense = context.normal.normalize().dot(lightDirNormalize)
-                    // diffuse.r *= intense
-                    // diffuse.g *= intense
-                    // diffuse.b *= intense
-                    // diffuse.a *= intense
+                    let c = context.normal.normalize().dot(lightDirNormalize)
+                    c = MathUtils.clamp(c, 0, 1)
+                    diffuse.r *= c
+                    diffuse.g *= c
+                    diffuse.b *= c
                     return diffuse
                 }
             }
@@ -75,6 +80,7 @@ export default class DrawMesh implements IExample{
         }
         return bytes;
     }
+
     protected createTextureFromBmpBuffer(bmp:any) {
         let buffer = this.base64ToArrayBuffer(bmp.data)
         let width = bmp.width
@@ -97,14 +103,15 @@ export default class DrawMesh implements IExample{
 
     protected loadTextures() {
         this.diffuseTexture = this.createTextureFromBmpBuffer(diffuseBuffer)
+        this.normalTexture = this.createTextureFromBmpBuffer(normalBuffer)
+        this.specTexture = this.createTextureFromBmpBuffer(specBuffer)
     }
 
     protected loadObj() {
-        
         let lines:Array<string> = objBuffer.split(/\r\n|\n/)
-        let vList:Array<Vector> =[]
-        let uvList:Array<UV> =[]
-        let normalList:Array<Vector> =[]
+        let vList:Array<Vector4> =[]
+        let uvList:Array<Vector2> =[]
+        let normalList:Array<Vector4> =[]
         let faceList:Array<any> =[]
 
         for (let line of lines) {
@@ -115,11 +122,11 @@ export default class DrawMesh implements IExample{
                 let vals = line.split(/\s+/)
                 let t = vals[0]
                 if (t == "v" && vals.length>=4) {
-                    vList.push(new Vector(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
+                    vList.push(new Vector4(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
                 } else if (t == "vt" && vals.length>=3) {
-                    uvList.push({ u: parseFloat(vals[1]), v:parseFloat(vals[2])})
+                    uvList.push(new Vector2(parseFloat(vals[1]), parseFloat(vals[2])) )
                 }else if (t == "vn" && vals.length>=4) {
-                    normalList.push(new Vector(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
+                    normalList.push(new Vector4(parseFloat(vals[1]),parseFloat(vals[2]), parseFloat(vals[3])))
                 }else if (t == "f" && vals.length>=4) {
                     let fvals = [
                         vals[1].split("/"),
@@ -147,7 +154,6 @@ export default class DrawMesh implements IExample{
             let n1 = normalList[ parseInt(v1s[2]) -1 ]
             let n2 = normalList[ parseInt(v2s[2]) -1 ]
             let n3 = normalList[ parseInt(v3s[2]) -1 ]
-
 
             this.triangles.push([
                 {posWorld:v1, color:Colors.WHITE, uv:uv1, normal:n1}, 

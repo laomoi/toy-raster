@@ -1,10 +1,11 @@
-import { Vector } from "../core/math/vector"
-import { Color, Colors } from "../core/mesh/color"
-import Shader, { ShaderContext, VertexShaderInput } from "../core/mesh/shader"
-import Texture from "../core/mesh/texture"
-import { Vertex } from "../core/mesh/vertex"
+import { Vector4 } from "../core/math/vector4"
+import { Color, Colors } from "../core/shading/color"
+import Shader, { ShaderContext, VertexShaderInput } from "../core/shading/shader"
+import Texture from "../core/shading/texture"
+import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
 import { IExample } from "../main"
+import { Vector2 } from "../core/math/vector2"
 
 export default class DrawBox implements IExample{
     protected texture:Texture
@@ -17,9 +18,9 @@ export default class DrawBox implements IExample{
 
     
     protected init() {
-        let eye = new Vector(1.5, 0, 2.5, 1)
-        let at = new Vector(0, 0, 0, 1)
-        let up = new Vector(0, 1, 0, 1)
+        let eye = new Vector4(1.5, 0, 2.5, 1)
+        let at = new Vector4(0, 0, 0, 1)
+        let up = new Vector4(0, 1, 0, 1)
         let fovy = Math.PI / 2
         let aspect = this.renderer.width / this.renderer.height
         let near = 1
@@ -29,7 +30,7 @@ export default class DrawBox implements IExample{
         let texture = this.texture
         let shader:Shader = new Shader(
             {
-                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector{
+                vertexShading: function(vertex:Vertex, input:VertexShaderInput):Vector4{
                     
                     vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
                     return vertex.context.posProject
@@ -44,15 +45,15 @@ export default class DrawBox implements IExample{
     }
 
     public draw() :void{
-        let va:Array<Vector> = [
-            new Vector(-1,-1,1),
-            new Vector(1,-1,1), 
-            new Vector(1,1,1),
-            new Vector(-1,1,1), 
-            new Vector(-1,-1,-1), 
-            new Vector(1,-1,-1),
-            new Vector(1,1,-1),
-            new Vector(-1,1,-1),
+        let va:Array<Vector4> = [
+            new Vector4(-1,-1,1),
+            new Vector4(1,-1,1), 
+            new Vector4(1,1,1),
+            new Vector4(-1,1,1), 
+            new Vector4(-1,-1,-1), 
+            new Vector4(1,-1,-1),
+            new Vector4(1,1,-1),
+            new Vector4(-1,1,-1),
         ] //立方体8个顶点
         let elements = [
             0, 1, 2, //front
@@ -70,20 +71,22 @@ export default class DrawBox implements IExample{
 
         ] //24个三角形,立方体外表面
 
-
+        let uv00 = new Vector2(0, 0)
+        let uv10 = new Vector2(1, 0)
+        let uv11 = new Vector2(1, 1)
+        let uv01 = new Vector2(0, 1)
         for (let e=0;e<elements.length;e+=6) {
             this.renderer.drawTriangle([
-                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
-                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv:{u:1, v:0}}, 
-                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
+                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv: uv00}, 
+                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv: uv10}, 
+                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv: uv11}, 
             ])
             this.renderer.drawTriangle([
-                {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:{u:1, v:1}}, 
-                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:{u:0, v:1}}, 
-                {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:{u:0, v:0}}, 
+                {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:uv11}, 
+                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:uv01}, 
+                {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:uv00}, 
             ])
         }
-       
     }
 
     protected createTexture(){

@@ -4,7 +4,7 @@ var draw_mesh_1 = require("./examples/draw-mesh");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
-        this.renderer = new raster_1["default"](canvasWidth, canvasHeight, true);
+        this.renderer = new raster_1["default"](canvasWidth, canvasHeight, false);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
         this.example = new draw_mesh_1["default"](this.renderer);
         var self = this;

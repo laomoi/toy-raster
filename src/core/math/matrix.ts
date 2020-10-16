@@ -1,4 +1,4 @@
-import { Vector } from "./vector"
+import { Vector4 } from "./vector4"
 
 // 4x4 列向量矩阵 , 右手坐标系
 export class Matrix {
@@ -58,7 +58,7 @@ export class Matrix {
         this.m[2][3] = 1
     }
 
-    public setLookAt(eye:Vector, at:Vector, up:Vector) {
+    public setLookAt(eye:Vector4, at:Vector4, up:Vector4) {
         //w is reverse of look at direction, wuv is the axises of the camera, 
         //The equation is from <fundamentals of CG> 4th. 7.1
         let w = at.sub(eye).normalize().reverse()

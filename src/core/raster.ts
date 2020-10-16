@@ -1,11 +1,11 @@
-import Buffer from "./buffer"
+import Buffer from "./shading/buffer"
 import { Matrix } from "./math/matrix"
-import { Vector } from "./math/vector"
-import { Color, Colors } from "./mesh/color"
-import Shader, { IShaderProgram, ShaderContext } from "./mesh/shader"
-import Texture, { UV } from "./mesh/texture"
-import { Vertex } from "./mesh/vertex"
-import Utils from "./utils"
+import { Vector4 } from "./math/vector4"
+import { Color, Colors } from "./shading/color"
+import Shader, { IShaderProgram, ShaderContext } from "./shading/shader"
+import { Vertex } from "./shading/vertex"
+import MathUtils from "./math/math-utils"
+import { Vector2 } from "./math/vector2"
 
 
 export interface Camera {
@@ -103,12 +103,12 @@ export default class Raster {
         }
     }
 
-    protected barycentricFunc(vs:Array<Vector>, a:number, b:number, x:number, y:number):number{
+    protected barycentricFunc(vs:Array<Vector4>, a:number, b:number, x:number, y:number):number{
         return ((vs[a].y - vs[b].y)*x + (vs[b].x - vs[a].x)*y + vs[a].x*vs[b].y - vs[b].x*vs[a].y)
     }
 
     //如果在三角形内，返回[3个重心坐标], 否则返回null
-    protected getBarycentricInTriangle(x:number, y:number, vs:Array<Vector>, fAlpha:number, fBelta:number, fGama:number,
+    protected getBarycentricInTriangle(x:number, y:number, vs:Array<Vector4>, fAlpha:number, fBelta:number, fGama:number,
         fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
         //F(a,b, x,y) = (ya-yb)*x + (xb-xa)*y + xa*yb - xb*ya, 
         //a,b is [0,1,2], belta= F(2,0,x,y) / F(2, 0, x1,y1)
@@ -156,13 +156,13 @@ export default class Raster {
         }
     }
 
-    protected rasterizePixelInTriangle(x:number, y:number, vs:Array<Vector>, v0:Vertex, v1:Vertex, v2:Vertex,
+    protected rasterizePixelInTriangle(x:number, y:number, vs:Array<Vector4>, v0:Vertex, v1:Vertex, v2:Vertex,
         fAlpha:number, fBelta:number, fGama:number, fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
         let barycentric = this.getBarycentricInTriangle(x, y, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
         if (barycentric == null) {
             return
         }
-        let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+        let rhw = MathUtils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
         //这里使用rhw=1/w作为深度缓冲的值，非线性的zbuffer在近处有更高的精度
         if (this.buffer.ztest(x, y, rhw)) {
             let w = 1 / (rhw != 0 ? rhw : 1)
@@ -175,12 +175,12 @@ export default class Raster {
                 x:x,
                 y:y, 
                 color:Colors.clone(Colors.WHITE),
-                uv:{u:0, v:0}, 
-                normal:new Vector()
+                uv:new Vector2(), 
+                normal:new Vector4()
             }
             Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
-            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
-            Utils.getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
+            Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
+            Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
             let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor)
@@ -189,7 +189,7 @@ export default class Raster {
         }
     }
 
-    protected rasterizePixelInTriangleMSAA(x:number, y:number, vs:Array<Vector>, v0:Vertex, v1:Vertex, v2:Vertex,
+    protected rasterizePixelInTriangleMSAA(x:number, y:number, vs:Array<Vector4>, v0:Vertex, v1:Vertex, v2:Vertex,
         fAlpha:number, fBelta:number, fGama:number, fAlphaTest:number, fBeltaTest:number, fGamaTest:number) {
         //4个子采样点, 2x2 RGSS GRID  
         let points = [[x-0.325,y+0.125],[x+0.125, y+0.325],[x-0.125, y-0.325],[x+0.325,y-0.125]] 
@@ -199,7 +199,7 @@ export default class Raster {
             let px:number = p[0], py:number=p[1]
             let barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest)
             if (barycentric != null) {
-                let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+                let rhw = MathUtils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
                 if (this.buffer.ztest(x, y, rhw, i)) {
                     testResults.push({
                             barycentric: barycentric, 
@@ -221,7 +221,7 @@ export default class Raster {
                 fx = testResults[0].x
                 fy = testResults[0].y
             }
-            let rhw = Utils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
+            let rhw = MathUtils.getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]) //1/z
             let w = 1 / (rhw != 0 ? rhw : 1)
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
@@ -231,12 +231,12 @@ export default class Raster {
                 x:fx,
                 y:fy, 
                 color:Colors.clone(Colors.WHITE),
-                uv:{u:0, v:0}, 
-                normal:new Vector()
+                uv:new Vector2(), 
+                normal:new Vector4()
             }
             Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
-            Utils.getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
-            Utils.getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
+            Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv)
+            Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal)
 
             let finalColor = this.currentShader.fragmentShading(context)
             if (finalColor.a > 0) {
@@ -270,8 +270,8 @@ export default class Raster {
         this.currentShader.setViewProject(this.camera.vp)
         for (let vertex of va) {
             vertex.context = {
-                posProject: new Vector(),
-                posScreen: new Vector(),
+                posProject: new Vector4(),
+                posScreen: new Vector4(),
                 rhw: 1
             }
             this.currentShader.vertexShading(vertex)      
@@ -285,7 +285,7 @@ export default class Raster {
         let culling = false
         for (let p of va) {
             //view volumn culling
-            if (!Utils.isInsideViewVolumn(p.context.posProject) ) {
+            if (!this.isInsideViewVolumn(p.context.posProject) ) {
                 culling = true
                 break;
             }
@@ -293,16 +293,16 @@ export default class Raster {
         
         if (!culling) {
             for (let p of va) {
-                Utils.convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height)
+                this.convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height)
             } 
             this.drawTriangle2D(va[0], va[1], va[2])
         }
     }
 
     protected setDefaultCamera() {
-        let eye = new Vector(1.5, 0, 3, 1)
-        let at = new Vector(0, 0, 0, 1)
-        let up = new Vector(0, 1, 0, 1)
+        let eye = new Vector4(1.5, 0, 3, 1)
+        let at = new Vector4(0, 0, 0, 1)
+        let up = new Vector4(0, 1, 0, 1)
         let fovy = Math.PI / 2
         let aspect = this.width / this.height
         let near = 1
@@ -310,7 +310,7 @@ export default class Raster {
         this.setCamera(eye, at, up, fovy, aspect, near, far)
     }
 
-    public setCamera(eye:Vector, lookAt:Vector, up:Vector, fovy:number, aspect:number, near:number, far:number) {
+    public setCamera(eye:Vector4, lookAt:Vector4, up:Vector4, fovy:number, aspect:number, near:number, far:number) {
         this.camera.view.setLookAt(eye, lookAt, up)
         this.camera.projection.setPerspective(fovy, aspect, near, far)
         this.camera.vp = this.camera.view.multiply(this.camera.projection)
@@ -322,6 +322,26 @@ export default class Raster {
 
     public setShader(shader:Shader){
         this.currentShader = shader
+    }
+
+    protected isInsideViewVolumn(v:Vector4){
+        if (v.x < -1 || v.x > 1){
+            return false
+        }
+        if (v.y < -1 || v.y > 1){
+            return false
+        }
+        if (v.z < -1 || v.z > 1){
+            return false
+        }
+        return true
+    }
+
+    protected convertToScreenPos(v:Vector4, dst:Vector4, width:number, height:number){
+        dst.x = (v.x + 1)/2 * width
+        dst.y = (v.y + 1)/2 * height
+        dst.z = v.z
+        return dst
     }
 }
 

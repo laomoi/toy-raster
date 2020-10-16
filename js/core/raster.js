@@ -1,8 +1,9 @@
-var buffer_1 = require("./buffer");
+var buffer_1 = require("./shading/buffer");
 var matrix_1 = require("./math/matrix");
-var vector_1 = require("./math/vector");
-var color_1 = require("./mesh/color");
-var utils_1 = require("./utils");
+var vector4_1 = require("./math/vector4");
+var color_1 = require("./shading/color");
+var math_utils_1 = require("./math/math-utils");
+var vector2_1 = require("./math/vector2");
 var Raster = (function () {
     function Raster(width, height, usingMSAA) {
         if (usingMSAA === void 0) { usingMSAA = true; }
@@ -130,7 +131,7 @@ var Raster = (function () {
         if (barycentric == null) {
             return;
         }
-        var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
+        var rhw = math_utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
         if (this.buffer.ztest(x, y, rhw)) {
             var w = 1 / (rhw != 0 ? rhw : 1);
             var a = barycentric[0] * w * v0.context.rhw;
@@ -140,12 +141,12 @@ var Raster = (function () {
                 x: x,
                 y: y,
                 color: color_1.Colors.clone(color_1.Colors.WHITE),
-                uv: { u: 0, v: 0 },
-                normal: new vector_1.Vector()
+                uv: new vector2_1.Vector2(),
+                normal: new vector4_1.Vector4()
             };
             color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
-            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
-            utils_1["default"].getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
+            vector2_1.Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
+            vector4_1.Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
             var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 this.setPixel(x, y, finalColor);
@@ -161,7 +162,7 @@ var Raster = (function () {
             var px = p[0], py = p[1];
             var barycentric = this.getBarycentricInTriangle(px, py, vs, fAlpha, fBelta, fGama, fAlphaTest, fBeltaTest, fGamaTest);
             if (barycentric != null) {
-                var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
+                var rhw = math_utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
                 if (this.buffer.ztest(x, y, rhw, i)) {
                     testResults.push({
                         barycentric: barycentric,
@@ -181,7 +182,7 @@ var Raster = (function () {
                 fx = testResults[0].x;
                 fy = testResults[0].y;
             }
-            var rhw = utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
+            var rhw = math_utils_1["default"].getInterpValue3(v0.context.rhw, v1.context.rhw, v2.context.rhw, barycentric[0], barycentric[1], barycentric[2]);
             var w = 1 / (rhw != 0 ? rhw : 1);
             var a = barycentric[0] * w * v0.context.rhw;
             var b = barycentric[1] * w * v1.context.rhw;
@@ -190,12 +191,12 @@ var Raster = (function () {
                 x: fx,
                 y: fy,
                 color: color_1.Colors.clone(color_1.Colors.WHITE),
-                uv: { u: 0, v: 0 },
-                normal: new vector_1.Vector()
+                uv: new vector2_1.Vector2(),
+                normal: new vector4_1.Vector4()
             };
             color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
-            utils_1["default"].getInterpUV(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
-            utils_1["default"].getInterpVector(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
+            vector2_1.Vector2.getInterpValue3(v0.uv, v1.uv, v2.uv, a, b, c, context.uv);
+            vector4_1.Vector4.getInterpValue3(v0.normal, v1.normal, v2.normal, a, b, c, context.normal);
             var finalColor = this.currentShader.fragmentShading(context);
             if (finalColor.a > 0) {
                 for (var _i = 0; _i < testResults.length; _i++) {
@@ -226,8 +227,8 @@ var Raster = (function () {
         for (var _i = 0; _i < va.length; _i++) {
             var vertex = va[_i];
             vertex.context = {
-                posProject: new vector_1.Vector(),
-                posScreen: new vector_1.Vector(),
+                posProject: new vector4_1.Vector4(),
+                posScreen: new vector4_1.Vector4(),
                 rhw: 1
             };
             this.currentShader.vertexShading(vertex);
@@ -237,7 +238,7 @@ var Raster = (function () {
         var culling = false;
         for (var _a = 0; _a < va.length; _a++) {
             var p = va[_a];
-            if (!utils_1["default"].isInsideViewVolumn(p.context.posProject)) {
+            if (!this.isInsideViewVolumn(p.context.posProject)) {
                 culling = true;
                 break;
             }
@@ -245,15 +246,15 @@ var Raster = (function () {
         if (!culling) {
             for (var _b = 0; _b < va.length; _b++) {
                 var p = va[_b];
-                utils_1["default"].convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height);
+                this.convertToScreenPos(p.context.posProject, p.context.posScreen, this.width, this.height);
             }
             this.drawTriangle2D(va[0], va[1], va[2]);
         }
     };
     Raster.prototype.setDefaultCamera = function () {
-        var eye = new vector_1.Vector(1.5, 0, 3, 1);
-        var at = new vector_1.Vector(0, 0, 0, 1);
-        var up = new vector_1.Vector(0, 1, 0, 1);
+        var eye = new vector4_1.Vector4(1.5, 0, 3, 1);
+        var at = new vector4_1.Vector4(0, 0, 0, 1);
+        var up = new vector4_1.Vector4(0, 1, 0, 1);
         var fovy = Math.PI / 2;
         var aspect = this.width / this.height;
         var near = 1;
@@ -270,6 +271,24 @@ var Raster = (function () {
     };
     Raster.prototype.setShader = function (shader) {
         this.currentShader = shader;
+    };
+    Raster.prototype.isInsideViewVolumn = function (v) {
+        if (v.x < -1 || v.x > 1) {
+            return false;
+        }
+        if (v.y < -1 || v.y > 1) {
+            return false;
+        }
+        if (v.z < -1 || v.z > 1) {
+            return false;
+        }
+        return true;
+    };
+    Raster.prototype.convertToScreenPos = function (v, dst, width, height) {
+        dst.x = (v.x + 1) / 2 * width;
+        dst.y = (v.y + 1) / 2 * height;
+        dst.z = v.z;
+        return dst;
     };
     return Raster;
 })();

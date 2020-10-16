@@ -11,10 +11,10 @@ module.exports = {
     module: {
         rules: [
             {
-            test: /\.png$/,
+            test: /\.bmp|\.png$/,
             use: [
                 {
-                    loader: path.resolve('loaders/bmp-loader.js'),
+                    loader: path.resolve('loaders/image-loader.js'),
                     options: {}
                 }
             ]

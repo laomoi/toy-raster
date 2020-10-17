@@ -1,5 +1,4 @@
-import { Vector4 } from "./vector4"
-import { Color } from "../shading/color"
+
 
 export default class MathUtils {
 
@@ -23,6 +22,10 @@ export default class MathUtils {
             return max
         }
         return value
+    }
+
+    public static saturate(value:number){
+        return MathUtils.clamp(value, 0, 1)
     }
 }
 

@@ -15,7 +15,7 @@ var Vector2 = (function () {
             dst = new Vector2();
         }
         dst.x = math_utils_1["default"].getInterpValue3(v1.x, v2.x, v3.x, a, b, c);
-        dst.y = math_utils_1["default"].getInterpValue3(v2.y, v2.y, v3.y, a, b, c);
+        dst.y = math_utils_1["default"].getInterpValue3(v1.y, v2.y, v3.y, a, b, c);
         return dst;
     };
     return Vector2;

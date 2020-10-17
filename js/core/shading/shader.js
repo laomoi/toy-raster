@@ -3,6 +3,8 @@ var ShaderVarying = (function () {
     }
     ShaderVarying.NORMAL = "normal";
     ShaderVarying.UV = "uv";
+    ShaderVarying.EYE = "eye";
+    ShaderVarying.WORLD_POS = "world_pos";
     return ShaderVarying;
 })();
 exports.ShaderVarying = ShaderVarying;

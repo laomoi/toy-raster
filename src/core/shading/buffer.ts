@@ -57,12 +57,16 @@ export default class Buffer {
 
     protected setFrameBufferPixel(x:number, y:number, color:Color) {
         let pstart = (this.width*y + x)*4
-        //using default blend
-        let a = color.a/255
-        this.frameBuffer[pstart] = color.r*a + this.frameBuffer[pstart]*(1-a)
-        this.frameBuffer[pstart+1] = color.g*a + this.frameBuffer[pstart+1]*(1-a)
-        this.frameBuffer[pstart+2] = color.b*a + this.frameBuffer[pstart+2]*(1-a)
-        this.frameBuffer[pstart+3] = 255//color.a
+        this.frameBuffer[pstart] = color.r
+        this.frameBuffer[pstart+1] = color.g
+        this.frameBuffer[pstart+2] = color.b
+        this.frameBuffer[pstart+3] = 255
+        //using default blend?
+        // let a = color.a/255
+        // this.frameBuffer[pstart] = color.r*a + this.frameBuffer[pstart]*(1-a)
+        // this.frameBuffer[pstart+1] = color.g*a + this.frameBuffer[pstart+1]*(1-a)
+        // this.frameBuffer[pstart+2] = color.b*a + this.frameBuffer[pstart+2]*(1-a)
+        // this.frameBuffer[pstart+3] = 255//color.a
     }
 
     public clear(backgroundColor:Color) {

@@ -19,6 +19,9 @@ var MathUtils = (function () {
         }
         return value;
     };
+    MathUtils.saturate = function (value) {
+        return MathUtils.clamp(value, 0, 1);
+    };
     return MathUtils;
 })();
 exports["default"] = MathUtils;

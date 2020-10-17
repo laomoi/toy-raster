@@ -18,7 +18,7 @@ export class Vector2{
             dst = new Vector2()
         }
         dst.x = MathUtils.getInterpValue3(v1.x, v2.x, v3.x, a, b, c)
-        dst.y = MathUtils.getInterpValue3(v2.y, v2.y, v3.y, a, b, c)
+        dst.y = MathUtils.getInterpValue3(v1.y, v2.y, v3.y, a, b, c)
         return dst
     }
 }

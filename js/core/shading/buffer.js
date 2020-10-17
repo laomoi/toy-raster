@@ -51,10 +51,9 @@ var Buffer = (function () {
     };
     Buffer.prototype.setFrameBufferPixel = function (x, y, color) {
         var pstart = (this.width * y + x) * 4;
-        var a = color.a / 255;
-        this.frameBuffer[pstart] = color.r * a + this.frameBuffer[pstart] * (1 - a);
-        this.frameBuffer[pstart + 1] = color.g * a + this.frameBuffer[pstart + 1] * (1 - a);
-        this.frameBuffer[pstart + 2] = color.b * a + this.frameBuffer[pstart + 2] * (1 - a);
+        this.frameBuffer[pstart] = color.r;
+        this.frameBuffer[pstart + 1] = color.g;
+        this.frameBuffer[pstart + 2] = color.b;
         this.frameBuffer[pstart + 3] = 255;
     };
     Buffer.prototype.clear = function (backgroundColor) {

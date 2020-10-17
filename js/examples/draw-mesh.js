@@ -2,23 +2,23 @@ var vector4_1 = require("../core/math/vector4");
 var color_1 = require("../core/shading/color");
 var texture_1 = require("../core/shading/texture");
 var shader_1 = require("../core/shading/shader");
-var vector2_1 = require("../core/math/vector2");
+var matrix_1 = require("../core/math/matrix");
 var math_utils_1 = require("../core/math/math-utils");
-var diablo3_pose_obj_1 = require('raw-loader!../../res/diablo3_pose.obj');
-var diablo3_pose_diffuse_png_1 = require('../../res/diablo3_pose_diffuse.png');
-var diablo3_pose_nm_png_1 = require('../../res/diablo3_pose_nm.png');
-var diablo3_pose_spec_png_1 = require('../../res/diablo3_pose_spec.png');
+var model_1 = require("../core/shading/model");
+var african_head_obj_1 = require('raw-loader!../../res/african_head.obj');
+var african_head_diffuse_png_1 = require('../../res/african_head_diffuse.png');
+var african_head_nm_png_1 = require('../../res/african_head_nm.png');
+var african_head_spec_png_1 = require('../../res/african_head_spec.png');
 var DrawMesh = (function () {
     function DrawMesh(renderer) {
-        this.triangles = [];
         this.renderer = renderer;
         this.init();
     }
     DrawMesh.prototype.init = function () {
-        var eye = new vector4_1.Vector4(0.5, 0, 2.0, 1);
+        var eye = new vector4_1.Vector4(1, 1, 3, 1);
         var at = new vector4_1.Vector4(0, 0, 0, 1);
         var up = new vector4_1.Vector4(0, 1, 0, 1);
-        var fovy = Math.PI / 2;
+        var fovy = Math.PI / 4;
         var aspect = this.renderer.width / this.renderer.height;
         var near = 1;
         var far = 500;
@@ -26,118 +26,52 @@ var DrawMesh = (function () {
         this.renderer.setBackgroundColor(color_1.Colors.GRAY);
         this.loadObj();
         this.loadTextures();
-        var lightDirNormalize = (new vector4_1.Vector4(1, 1, 0.7)).normalize();
+        var lightDir = (new vector4_1.Vector4(1, 1, 1)).normalize();
         var diffuseTexture = this.diffuseTexture;
+        var normalTexture = this.normalTexture;
+        var specTexture = this.specTexture;
+        var modelMatrix = new matrix_1.Matrix();
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
-                vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                var posWorld = vertex.posModel.transform(modelMatrix);
+                vertex.context.posProject = posWorld.transform(input.viewProject);
                 vertex.context.varyingVec2Dict[shader_1.ShaderVarying.UV] = vertex.uv;
-                vertex.context.varyingVec4Dict[shader_1.ShaderVarying.NORMAL] = vertex.normal;
+                vertex.context.varyingVec4Dict[shader_1.ShaderVarying.WORLD_POS] = posWorld;
                 return vertex.context.posProject;
             },
             fragmentShading: function (input) {
-                var diffuse = diffuseTexture.sample(input.varyingVec2Dict[shader_1.ShaderVarying.UV]);
-                color_1.Colors.multiplyColor(diffuse, input.color, diffuse);
-                var c = input.varyingVec4Dict[shader_1.ShaderVarying.NORMAL].normalize().dot(lightDirNormalize);
-                c = math_utils_1["default"].clamp(c + 0.15, 0, 1);
-                diffuse.r *= c;
-                diffuse.g *= c;
-                diffuse.b *= c;
-                return diffuse;
+                var uv = input.varyingVec2Dict[shader_1.ShaderVarying.UV];
+                var diffuseColor = diffuseTexture.sample(uv);
+                var normal = normalTexture.sampleAsVector(uv);
+                var specFactor = specTexture.sample(uv).b;
+                var n = normal.normalize();
+                var worldPos = input.varyingVec4Dict[shader_1.ShaderVarying.WORLD_POS];
+                var diffuseIntense = math_utils_1["default"].saturate(n.dot(lightDir));
+                var viewDir = eye.sub(worldPos).normalize();
+                var halfDir = lightDir.add(viewDir).normalize();
+                var specIntense = Math.pow(Math.max(0, n.dot(halfDir)), specFactor) * 0.6;
+                var factor = diffuseIntense + specIntense;
+                diffuseColor.r *= factor;
+                diffuseColor.g *= factor;
+                diffuseColor.b *= factor;
+                return diffuseColor;
             }
         });
         this.renderer.setShader(shader);
     };
-    DrawMesh.prototype.base64ToArrayBuffer = function (base64) {
-        var binary_string = window.atob(base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            bytes[i] = binary_string.charCodeAt(i);
-        }
-        return bytes;
-    };
-    DrawMesh.prototype.createTextureFromBmpBuffer = function (bmp) {
-        var buffer = this.base64ToArrayBuffer(bmp.data);
-        var width = bmp.width;
-        var height = bmp.height;
-        var texture = new texture_1["default"](width, height);
-        for (var y = 0; y < height; y++) {
-            for (var x = 0; x < width; x++) {
-                var pos = ((height - y - 1) * width + x) * 4;
-                var color = {
-                    r: buffer[pos],
-                    g: buffer[pos + 1],
-                    b: buffer[pos + 2],
-                    a: buffer[pos + 3]
-                };
-                texture.setPixel(x, y, color);
-            }
-        }
-        return texture;
-    };
     DrawMesh.prototype.loadTextures = function () {
-        this.diffuseTexture = this.createTextureFromBmpBuffer(diablo3_pose_diffuse_png_1["default"]);
-        this.normalTexture = this.createTextureFromBmpBuffer(diablo3_pose_nm_png_1["default"]);
-        this.specTexture = this.createTextureFromBmpBuffer(diablo3_pose_spec_png_1["default"]);
+        this.diffuseTexture = texture_1["default"].createTextureFromBmpBuffer(african_head_diffuse_png_1["default"]);
+        this.normalTexture = texture_1["default"].createTextureFromBmpBuffer(african_head_nm_png_1["default"]);
+        this.specTexture = texture_1["default"].createTextureFromBmpBuffer(african_head_spec_png_1["default"]);
     };
     DrawMesh.prototype.loadObj = function () {
-        var lines = diablo3_pose_obj_1["default"].split(/\r\n|\n/);
-        var vList = [];
-        var uvList = [];
-        var normalList = [];
-        var faceList = [];
-        for (var _i = 0; _i < lines.length; _i++) {
-            var line = lines[_i];
-            if (line != "") {
-                if (line.charAt(0) == "#") {
-                    continue;
-                }
-                var vals = line.split(/\s+/);
-                var t = vals[0];
-                if (t == "v" && vals.length >= 4) {
-                    vList.push(new vector4_1.Vector4(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
-                }
-                else if (t == "vt" && vals.length >= 3) {
-                    uvList.push(new vector2_1.Vector2(parseFloat(vals[1]), parseFloat(vals[2])));
-                }
-                else if (t == "vn" && vals.length >= 4) {
-                    normalList.push(new vector4_1.Vector4(parseFloat(vals[1]), parseFloat(vals[2]), parseFloat(vals[3])));
-                }
-                else if (t == "f" && vals.length >= 4) {
-                    var fvals = [
-                        vals[1].split("/"),
-                        vals[2].split("/"),
-                        vals[3].split("/"),
-                    ];
-                    faceList.push(fvals);
-                }
-            }
-        }
-        for (var _a = 0; _a < faceList.length; _a++) {
-            var f = faceList[_a];
-            var v1s = f[0];
-            var v2s = f[1];
-            var v3s = f[2];
-            var v1 = vList[parseInt(v1s[0]) - 1];
-            var v2 = vList[parseInt(v2s[0]) - 1];
-            var v3 = vList[parseInt(v3s[0]) - 1];
-            var uv1 = uvList[parseInt(v1s[1]) - 1];
-            var uv2 = uvList[parseInt(v2s[1]) - 1];
-            var uv3 = uvList[parseInt(v3s[1]) - 1];
-            var n1 = normalList[parseInt(v1s[2]) - 1];
-            var n2 = normalList[parseInt(v2s[2]) - 1];
-            var n3 = normalList[parseInt(v3s[2]) - 1];
-            this.triangles.push([
-                { posWorld: v1, color: color_1.Colors.WHITE, uv: uv1, normal: n1 },
-                { posWorld: v2, color: color_1.Colors.WHITE, uv: uv2, normal: n2 },
-                { posWorld: v3, color: color_1.Colors.WHITE, uv: uv3, normal: n3 },
-            ]);
-        }
+        this.model = new model_1["default"]();
+        this.model.createFromObjBuffer(african_head_obj_1["default"]);
     };
     DrawMesh.prototype.draw = function () {
-        for (var _i = 0, _a = this.triangles; _i < _a.length; _i++) {
-            var triangle = _a[_i];
+        var triangles = this.model.triangles;
+        for (var _i = 0; _i < triangles.length; _i++) {
+            var triangle = triangles[_i];
             this.renderer.drawTriangle(triangle);
         }
     };

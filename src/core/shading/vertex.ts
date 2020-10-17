@@ -11,7 +11,7 @@ export interface VertexContext {
 }
 
 export interface Vertex {
-    posWorld?:Vector4,
+    posModel?:Vector4,
     color?:Color,//default White
     uv?:Vector2,
     normal?:Vector4,

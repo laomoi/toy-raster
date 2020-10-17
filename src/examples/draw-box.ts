@@ -7,6 +7,8 @@ import Raster from "../core/raster"
 import { IExample } from "../main"
 import { Vector2 } from "../core/math/vector2"
 
+import floorPngBuffer from '../../res/floor_diffuse.png'
+
 export default class DrawBox implements IExample{
     protected texture:Texture
     protected renderer:Raster
@@ -15,7 +17,7 @@ export default class DrawBox implements IExample{
         this.renderer = renderer
         this.init()
     }
-
+    
     
     protected init() {
         let eye = new Vector4(1.5, 0, 2.5, 1)
@@ -26,12 +28,12 @@ export default class DrawBox implements IExample{
         let near = 1
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
-        this.renderer.setBackgroundColor(Colors.YELLOW)
+        this.renderer.setBackgroundColor(Colors.GRAY)
         let texture = this.texture
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexInput):Vector4{
-                    vertex.posWorld.transform(input.viewProject, vertex.context.posProject)
+                    vertex.posModel.transform(input.viewProject, vertex.context.posProject)
                     vertex.context.varyingVec2Dict[ShaderVarying.UV] = vertex.uv
                     return vertex.context.posProject
                 },
@@ -77,19 +79,20 @@ export default class DrawBox implements IExample{
         let uv01 = new Vector2(0, 1)
         for (let e=0;e<elements.length;e+=6) {
             this.renderer.drawTriangle([
-                {posWorld:va[ elements[e] ], color:Colors.WHITE, uv:uv00}, 
-                {posWorld:va[ elements[e+1] ], color:Colors.WHITE, uv:uv10}, 
-                {posWorld:va[ elements[e+2] ], color:Colors.WHITE, uv:uv11}, 
+                {posModel:va[ elements[e] ], color:Colors.WHITE, uv:uv00}, 
+                {posModel:va[ elements[e+1] ], color:Colors.WHITE, uv:uv10}, 
+                {posModel:va[ elements[e+2] ], color:Colors.WHITE, uv:uv11}, 
             ])
             this.renderer.drawTriangle([
-                {posWorld:va[ elements[e+3] ], color:Colors.WHITE, uv:uv11}, 
-                {posWorld:va[ elements[e+4] ], color:Colors.WHITE, uv:uv01}, 
-                {posWorld:va[ elements[e+5] ], color:Colors.WHITE, uv:uv00}, 
+                {posModel:va[ elements[e+3] ], color:Colors.WHITE, uv:uv11}, 
+                {posModel:va[ elements[e+4] ], color:Colors.WHITE, uv:uv01}, 
+                {posModel:va[ elements[e+5] ], color:Colors.WHITE, uv:uv00}, 
             ])
         }
     }
 
     protected createTexture(){
+        return Texture.createTextureFromBmpBuffer(floorPngBuffer)
         let texture = new Texture(256, 256)
         for (let i=0;i<256;i++) {
             for (let j=0;j<256;j++) {

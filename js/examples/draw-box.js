@@ -3,6 +3,7 @@ var color_1 = require("../core/shading/color");
 var shader_1 = require("../core/shading/shader");
 var texture_1 = require("../core/shading/texture");
 var vector2_1 = require("../core/math/vector2");
+var floor_diffuse_png_1 = require('../../res/floor_diffuse.png');
 var DrawBox = (function () {
     function DrawBox(renderer) {
         this.texture = this.createTexture();
@@ -18,11 +19,11 @@ var DrawBox = (function () {
         var near = 1;
         var far = 500;
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far);
-        this.renderer.setBackgroundColor(color_1.Colors.YELLOW);
+        this.renderer.setBackgroundColor(color_1.Colors.GRAY);
         var texture = this.texture;
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
-                vertex.posWorld.transform(input.viewProject, vertex.context.posProject);
+                vertex.posModel.transform(input.viewProject, vertex.context.posProject);
                 vertex.context.varyingVec2Dict[shader_1.ShaderVarying.UV] = vertex.uv;
                 return vertex.context.posProject;
             },
@@ -64,18 +65,19 @@ var DrawBox = (function () {
         var uv01 = new vector2_1.Vector2(0, 1);
         for (var e = 0; e < elements.length; e += 6) {
             this.renderer.drawTriangle([
-                { posWorld: va[elements[e]], color: color_1.Colors.WHITE, uv: uv00 },
-                { posWorld: va[elements[e + 1]], color: color_1.Colors.WHITE, uv: uv10 },
-                { posWorld: va[elements[e + 2]], color: color_1.Colors.WHITE, uv: uv11 },
+                { posModel: va[elements[e]], color: color_1.Colors.WHITE, uv: uv00 },
+                { posModel: va[elements[e + 1]], color: color_1.Colors.WHITE, uv: uv10 },
+                { posModel: va[elements[e + 2]], color: color_1.Colors.WHITE, uv: uv11 },
             ]);
             this.renderer.drawTriangle([
-                { posWorld: va[elements[e + 3]], color: color_1.Colors.WHITE, uv: uv11 },
-                { posWorld: va[elements[e + 4]], color: color_1.Colors.WHITE, uv: uv01 },
-                { posWorld: va[elements[e + 5]], color: color_1.Colors.WHITE, uv: uv00 },
+                { posModel: va[elements[e + 3]], color: color_1.Colors.WHITE, uv: uv11 },
+                { posModel: va[elements[e + 4]], color: color_1.Colors.WHITE, uv: uv01 },
+                { posModel: va[elements[e + 5]], color: color_1.Colors.WHITE, uv: uv00 },
             ]);
         }
     };
     DrawBox.prototype.createTexture = function () {
+        return texture_1["default"].createTextureFromBmpBuffer(floor_diffuse_png_1["default"]);
         var texture = new texture_1["default"](256, 256);
         for (var i = 0; i < 256; i++) {
             for (var j = 0; j < 256; j++) {

@@ -15,6 +15,37 @@ export default class Texture {
 
     public filterMode:TEXTURE_FILTER_MODE = TEXTURE_FILTER_MODE.BILINEAR
 
+    public static createTextureFromBmpBuffer(bmp:any) {
+        let buffer = this.base64ToArrayBuffer(bmp.data)
+        let width = bmp.width
+        let height = bmp.height
+        let texture = new Texture(width, height)
+        for (let y=0;y<height;y++) {
+            for (let x=0;x<width;x++) {
+                let pos = ((height-y-1)*width + x)*4  //webgl中 v坐标向下，把纹理上下反一下
+                let color:Color = {
+                    r: buffer[pos],
+                    g: buffer[pos+1],
+                    b: buffer[pos+2],
+                    a: buffer[pos+3],
+                }
+                texture.setPixel(x, y, color)
+            }
+        }
+        return texture
+    }
+
+    protected static base64ToArrayBuffer(base64:string):Uint8Array {
+        var binary_string = window.atob(base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes;
+    }
+
+    
     constructor(width:number, height:number) {
         this.width = width
         this.height = height
@@ -29,6 +60,11 @@ export default class Texture {
         let x = uv.x * (this.width - 1)
         let y = uv.y * (this.height - 1)
         return this.samplePos(x+0.5, y+0.5)
+    }
+
+    public sampleAsVector(uv:Vector2):Vector4 {
+        let color = this.sample(uv)
+        return new Vector4((color.r/255)*2 -1, (color.g/255)*2 -1, (color.b/255)*2 -1, (color.a/255)*2 -1)
     }
 
     protected clamp(value:number, min:number, max:number):number{

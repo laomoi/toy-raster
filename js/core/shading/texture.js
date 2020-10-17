@@ -1,3 +1,4 @@
+var vector4_1 = require("../math/vector4");
 var color_1 = require("./color");
 (function (TEXTURE_FILTER_MODE) {
     TEXTURE_FILTER_MODE[TEXTURE_FILTER_MODE["NEAREST"] = 1] = "NEAREST";
@@ -12,6 +13,34 @@ var Texture = (function () {
         this.width = width;
         this.height = height;
     }
+    Texture.createTextureFromBmpBuffer = function (bmp) {
+        var buffer = this.base64ToArrayBuffer(bmp.data);
+        var width = bmp.width;
+        var height = bmp.height;
+        var texture = new Texture(width, height);
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var pos = ((height - y - 1) * width + x) * 4;
+                var color = {
+                    r: buffer[pos],
+                    g: buffer[pos + 1],
+                    b: buffer[pos + 2],
+                    a: buffer[pos + 3]
+                };
+                texture.setPixel(x, y, color);
+            }
+        }
+        return texture;
+    };
+    Texture.base64ToArrayBuffer = function (base64) {
+        var binary_string = window.atob(base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes;
+    };
     Texture.prototype.setPixel = function (x, y, color) {
         var pos = y * this.width + x;
         this.data[pos] = color;
@@ -20,6 +49,10 @@ var Texture = (function () {
         var x = uv.x * (this.width - 1);
         var y = uv.y * (this.height - 1);
         return this.samplePos(x + 0.5, y + 0.5);
+    };
+    Texture.prototype.sampleAsVector = function (uv) {
+        var color = this.sample(uv);
+        return new vector4_1.Vector4((color.r / 255) * 2 - 1, (color.g / 255) * 2 - 1, (color.b / 255) * 2 - 1, (color.a / 255) * 2 - 1);
     };
     Texture.prototype.clamp = function (value, min, max) {
         if (value > max) {

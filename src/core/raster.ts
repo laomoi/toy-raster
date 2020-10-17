@@ -191,6 +191,7 @@ export default class Raster {
             let a = barycentric[0]*w*v0.context.rhw
             let b = barycentric[1]*w*v1.context.rhw
             let c = barycentric[2]*w*v2.context.rhw
+
             let input:FragmentInput = this.createFragmentInput(x, y, v0, v1, v2, a, b, c) 
             let finalColor = this.currentShader.fragmentShading(input)
             if (finalColor.a > 0) {
@@ -258,7 +259,7 @@ export default class Raster {
 
     public setPixel(x:number, y:number, color:Color, index:number=0) {
         if (x < this.width && y < this.height && x>=0 && y>=0) {
-            this.buffer.setColor(x, y, color, index) //override blend
+            this.buffer.setColor(x, y, color, index) 
         }        
     }
 

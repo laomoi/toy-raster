@@ -22,6 +22,13 @@ var App = (function () {
     App.prototype.flush = function () {
         this.blitter.blitPixels(this.renderer.width, this.renderer.height, this.renderer.getFrameBuffer());
     };
+    App.prototype.onMouseDown = function (x, y) {
+        console.log("down", x, y);
+    };
+    App.prototype.onMouseMove = function (x, y) {
+    };
+    App.prototype.onMouseUp = function (x, y) {
+    };
     return App;
 })();
 exports["default"] = App;
@@ -33,5 +40,16 @@ window.onload = function () {
         return;
     }
     window.app = new App(canvas.width, canvas.height, gl);
+};
+window.onmousedown = function (e) {
+    window.app.onMouseDown(e.clientX, e.clientY);
+    var canvas = document.getElementById('canvas');
+    var rect = canvas.getBoundingClientRect();
+};
+window.onmousemove = function (e) {
+    window.app.onMouseMove(e.clientX, e.clientY);
+};
+window.onmouseup = function (e) {
+    window.app.onMouseUp(e.clientX, e.clientY);
 };
 //# sourceMappingURL=main.js.map

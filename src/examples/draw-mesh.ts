@@ -1,5 +1,5 @@
 import { Vector4 } from "../core/math/vector4"
-import { Color, Colors } from "../core/shading/color"
+import { Color } from "../core/shading/color"
 import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
@@ -48,7 +48,7 @@ export default class DrawMesh implements IExample{
         let near = 1
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
-        this.renderer.setBackgroundColor(Colors.GRAY)
+        this.renderer.setBackgroundColor(Color.GRAY)
         this.loadObj()
         this.loadTextures()
 
@@ -59,7 +59,7 @@ export default class DrawMesh implements IExample{
         let specTexture = this.specTexture
 
         let modelMatrix = new Matrix()
-
+        let fragColor:Color = new Color()
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexInput):Vector4{
@@ -86,20 +86,19 @@ export default class DrawMesh implements IExample{
                     //高光
                     let viewDir:Vector4 = eye.sub(worldPos).normalize()
                     let halfDir:Vector4 = lightDir.add(viewDir).normalize()
-                    let specIntense = Math.pow( Math.max(0, n.dot(halfDir)), specFactor) *0.6
+                    let specIntense = Math.pow( Math.max(0, n.dot(halfDir)), 5*specFactor) //*0.8
 
                     let factor = diffuseIntense + specIntense
-                    diffuseColor.r *= factor
-                    diffuseColor.g *= factor
-                    diffuseColor.b *= factor
-
-                    return diffuseColor
+                    let ambient = 5
+                    fragColor.set(diffuseColor).multiplyRGB(factor).add(ambient)
+                    fragColor.a = 255
+                    return fragColor
                 }
             }
         )
         this.renderer.setShader(shader)
     }
-    
+
     protected loadTextures() {
         this.diffuseTexture = Texture.createTextureFromBmpBuffer(diffuseBuffer)
         this.normalTexture = Texture.createTextureFromBmpBuffer(normalBuffer)

@@ -1,5 +1,5 @@
 import { Vector4 } from "../core/math/vector4"
-import { Color, Colors } from "../core/shading/color"
+import { Color} from "../core/shading/color"
 import Shader, { FragmentInput, ShaderVarying, VertexInput } from "../core/shading/shader"
 import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
@@ -28,7 +28,7 @@ export default class DrawBox implements IExample{
         let near = 1
         let far = 500
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
-        this.renderer.setBackgroundColor(Colors.GRAY)
+        this.renderer.setBackgroundColor(Color.GRAY)
         let texture = this.texture
         let shader:Shader = new Shader(
             {
@@ -39,7 +39,7 @@ export default class DrawBox implements IExample{
                 },
                 fragmentShading: function(input:FragmentInput):Color {
                     let tex = texture.sample(input.varyingVec2Dict[ShaderVarying.UV])
-                    return Colors.multiplyColor(tex, input.color, tex)
+                    return Color.multiplyColor(tex, input.color, tex)
                 }
             }
         )
@@ -79,32 +79,19 @@ export default class DrawBox implements IExample{
         let uv01 = new Vector2(0, 1)
         for (let e=0;e<elements.length;e+=6) {
             this.renderer.drawTriangle([
-                {posModel:va[ elements[e] ], color:Colors.WHITE, uv:uv00}, 
-                {posModel:va[ elements[e+1] ], color:Colors.WHITE, uv:uv10}, 
-                {posModel:va[ elements[e+2] ], color:Colors.WHITE, uv:uv11}, 
+                {posModel:va[ elements[e] ], color:Color.WHITE, uv:uv00}, 
+                {posModel:va[ elements[e+1] ], color:Color.WHITE, uv:uv10}, 
+                {posModel:va[ elements[e+2] ], color:Color.WHITE, uv:uv11}, 
             ])
             this.renderer.drawTriangle([
-                {posModel:va[ elements[e+3] ], color:Colors.WHITE, uv:uv11}, 
-                {posModel:va[ elements[e+4] ], color:Colors.WHITE, uv:uv01}, 
-                {posModel:va[ elements[e+5] ], color:Colors.WHITE, uv:uv00}, 
+                {posModel:va[ elements[e+3] ], color:Color.WHITE, uv:uv11}, 
+                {posModel:va[ elements[e+4] ], color:Color.WHITE, uv:uv01}, 
+                {posModel:va[ elements[e+5] ], color:Color.WHITE, uv:uv00}, 
             ])
         }
     }
 
     protected createTexture(){
         return Texture.createTextureFromBmpBuffer(floorPngBuffer)
-        let texture = new Texture(256, 256)
-        for (let i=0;i<256;i++) {
-            for (let j=0;j<256;j++) {
-                let x = Math.floor(i/32)
-                let y = Math.floor(j/32)
-                if ((x+y) % 2 == 0) {
-                    texture.setPixel(j, i, Colors.BLUE)
-                } else {
-                    texture.setPixel(j, i, Colors.WHITE)
-                }
-            }
-        }
-        return texture
     }
 }

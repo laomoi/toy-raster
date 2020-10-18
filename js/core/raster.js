@@ -8,7 +8,7 @@ var Raster = (function () {
     function Raster(width, height, usingMSAA) {
         if (usingMSAA === void 0) { usingMSAA = true; }
         this.buffer = null;
-        this.backgroundColor = color_1.Colors.clone(color_1.Colors.BLACK);
+        this.backgroundColor = color_1.Color.BLACK.clone();
         this.usingMSAA = true;
         this.currentShader = null;
         this.camera = {
@@ -130,11 +130,11 @@ var Raster = (function () {
         var context = {
             x: x,
             y: y,
-            color: color_1.Colors.clone(color_1.Colors.WHITE),
+            color: color_1.Color.WHITE.clone(),
             varyingVec2Dict: {},
             varyingVec4Dict: {}
         };
-        color_1.Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
+        color_1.Color.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color);
         for (var k in v0.context.varyingVec2Dict) {
             context.varyingVec2Dict[k] = vector2_1.Vector2.getInterpValue3(v0.context.varyingVec2Dict[k], v1.context.varyingVec2Dict[k], v2.context.varyingVec2Dict[k], a, b, c);
         }
@@ -210,7 +210,7 @@ var Raster = (function () {
         }
     };
     Raster.prototype.setBackgroundColor = function (color) {
-        this.backgroundColor = color_1.Colors.clone(color);
+        this.backgroundColor = color.clone();
     };
     Raster.prototype.setPixel = function (x, y, color, index) {
         if (index === void 0) { index = 0; }

@@ -1,6 +1,6 @@
 import { Vector2 } from "../math/vector2"
 import { Vector4 } from "../math/vector4"
-import { Color, Colors } from "./color"
+import { Color } from "./color"
 
 
 export enum TEXTURE_FILTER_MODE {
@@ -11,7 +11,7 @@ export default class Texture {
     public width:number
     public height:number
     public data:Array<Color> = []
-    protected tmp:Color = {r:0, g:0, b:0, a:0}
+    protected tmp:Color = new Color()
 
     public filterMode:TEXTURE_FILTER_MODE = TEXTURE_FILTER_MODE.BILINEAR
 
@@ -23,12 +23,7 @@ export default class Texture {
         for (let y=0;y<height;y++) {
             for (let x=0;x<width;x++) {
                 let pos = ((height-y-1)*width + x)*4  //webgl中 v坐标向下，把纹理上下反一下
-                let color:Color = {
-                    r: buffer[pos],
-                    g: buffer[pos+1],
-                    b: buffer[pos+2],
-                    a: buffer[pos+3],
-                }
+                let color:Color = new Color(buffer[pos], buffer[pos+1], buffer[pos+2],buffer[pos+3])
                 texture.setPixel(x, y, color)
             }
         }
@@ -111,11 +106,11 @@ export default class Texture {
             let w2 = dx*(1-dy)
             let w3 = (1-dx)*dy
             let w4 = dx*dy
-            Colors.getBilinearColor(c1, c2, c3, c4, w1, w2, w3, w4, this.tmp)
+            Color.getBilinearColor(c1, c2, c3, c4, w1, w2, w3, w4, this.tmp)
             return this.tmp
         }
 
-        return Colors.BLACK
+        return Color.BLACK
     }
 
     

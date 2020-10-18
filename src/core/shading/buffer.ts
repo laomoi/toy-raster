@@ -1,4 +1,4 @@
-import { Color, Colors } from "./color"
+import { Color } from "./color"
 
 export default class Buffer {
     public usingMSAA:boolean = true
@@ -95,7 +95,7 @@ export default class Buffer {
             return
         }
         let pstart = (this.width*y + x)*4*4
-        let color:Color = {r:0,g:0,b:0,a:0}
+        let color:Color = new Color()
         for (let i=0;i<4;i++) {
             let colorStart = pstart + i*4
             let r = this.msaaColorBuffer[colorStart] 

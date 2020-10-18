@@ -23,7 +23,7 @@ var DrawMesh = (function () {
         var near = 1;
         var far = 500;
         this.renderer.setCamera(eye, at, up, fovy, aspect, near, far);
-        this.renderer.setBackgroundColor(color_1.Colors.GRAY);
+        this.renderer.setBackgroundColor(color_1.Color.GRAY);
         this.loadObj();
         this.loadTextures();
         var lightDir = (new vector4_1.Vector4(1, 1, 1)).normalize();
@@ -31,6 +31,7 @@ var DrawMesh = (function () {
         var normalTexture = this.normalTexture;
         var specTexture = this.specTexture;
         var modelMatrix = new matrix_1.Matrix();
+        var fragColor = new color_1.Color();
         var shader = new shader_1["default"]({
             vertexShading: function (vertex, input) {
                 var posWorld = vertex.posModel.transform(modelMatrix);
@@ -49,12 +50,12 @@ var DrawMesh = (function () {
                 var diffuseIntense = math_utils_1["default"].saturate(n.dot(lightDir));
                 var viewDir = eye.sub(worldPos).normalize();
                 var halfDir = lightDir.add(viewDir).normalize();
-                var specIntense = Math.pow(Math.max(0, n.dot(halfDir)), specFactor) * 0.6;
+                var specIntense = Math.pow(Math.max(0, n.dot(halfDir)), 5 * specFactor);
                 var factor = diffuseIntense + specIntense;
-                diffuseColor.r *= factor;
-                diffuseColor.g *= factor;
-                diffuseColor.b *= factor;
-                return diffuseColor;
+                var ambient = 5;
+                fragColor.set(diffuseColor).multiplyRGB(factor).add(ambient);
+                fragColor.a = 255;
+                return fragColor;
             }
         });
         this.renderer.setShader(shader);

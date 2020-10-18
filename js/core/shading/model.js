@@ -54,9 +54,9 @@ var Model = (function () {
             var n2 = normalList[parseInt(v2s[2]) - 1];
             var n3 = normalList[parseInt(v3s[2]) - 1];
             this.triangles.push([
-                { posModel: v1, color: color_1.Colors.WHITE, uv: uv1, normal: n1 },
-                { posModel: v2, color: color_1.Colors.WHITE, uv: uv2, normal: n2 },
-                { posModel: v3, color: color_1.Colors.WHITE, uv: uv3, normal: n3 },
+                { posModel: v1, color: color_1.Color.WHITE, uv: uv1, normal: n1 },
+                { posModel: v2, color: color_1.Color.WHITE, uv: uv2, normal: n2 },
+                { posModel: v3, color: color_1.Color.WHITE, uv: uv3, normal: n3 },
             ]);
         }
     };

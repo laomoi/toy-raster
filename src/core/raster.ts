@@ -1,7 +1,7 @@
 import Buffer from "./shading/buffer"
 import { Matrix } from "./math/matrix"
 import { Vector4 } from "./math/vector4"
-import { Color, Colors } from "./shading/color"
+import { Color } from "./shading/color"
 import Shader, { IShaderProgram, FragmentInput } from "./shading/shader"
 import { Vertex } from "./shading/vertex"
 import MathUtils from "./math/math-utils"
@@ -20,7 +20,7 @@ export default class Raster {
     public height:number
     // public frameBuffer:Uint8Array = null
     protected buffer:Buffer = null
-    protected backgroundColor:Color = Colors.clone(Colors.BLACK)
+    protected backgroundColor:Color = Color.BLACK.clone()
     protected usingMSAA:boolean = true //使用2x2 grid的MSAA抗锯齿
     protected currentShader:Shader = null
 
@@ -160,12 +160,12 @@ export default class Raster {
         let context:FragmentInput = {
             x:x,
             y:y, 
-            color:Colors.clone(Colors.WHITE),
+            color:Color.WHITE.clone(),
             varyingVec2Dict:{},
             varyingVec4Dict:{},
         }
         //插值
-        Colors.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
+        Color.getInterpColor(v0.color, v1.color, v2.color, a, b, c, context.color)
         for (let k in v0.context.varyingVec2Dict) {
             context.varyingVec2Dict[k] = Vector2.getInterpValue3(v0.context.varyingVec2Dict[k], 
                 v1.context.varyingVec2Dict[k], v2.context.varyingVec2Dict[k], a, b, c)
@@ -254,7 +254,7 @@ export default class Raster {
 
 
     public setBackgroundColor(color:Color) {
-        this.backgroundColor = Colors.clone(color)
+        this.backgroundColor = color.clone()
     }
 
     public setPixel(x:number, y:number, color:Color, index:number=0) {

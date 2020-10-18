@@ -1,8 +1,4 @@
 import { WebGLBlitter } from "./blitter/webgl-blitter"
-import { Vector4 } from "./core/math/vector4"
-import { Colors } from "./core/shading/color"
-import Texture from "./core/shading/texture"
-import { Vertex } from "./core/shading/vertex"
 import Raster from "./core/raster"
 import DrawBox from "./examples/draw-box"
 import DrawMesh from "./examples/draw-mesh"
@@ -41,16 +37,44 @@ export default class App {
         this.blitter.blitPixels(this.renderer.width, this.renderer.height, this.renderer.getFrameBuffer())
     }
 
+
+    protected onMouseDown(x:number, y:number){
+        console.log("down",x, y)
+    }
+
+    protected onMouseMove(x:number, y:number){
+        
+    }
+
+    protected onMouseUp(x:number, y:number){
+        
+    }
 }
 
 
 window.onload = function () {
-    var canvas:any = document.getElementById('canvas')
-    var gl = canvas.getContext('webgl');
+    let canvas:any = document.getElementById('canvas')
+    let gl = canvas.getContext('webgl');
     if (!gl) {
         console.log("WEBGL FAILED");
         return;
     }
 
     window.app = new App(canvas.width, canvas.height, gl);
+}
+
+
+
+window.onmousedown = function(e:MouseEvent){
+    window.app.onMouseDown(e.clientX, e.clientY)
+    let canvas:any = document.getElementById('canvas')
+    let rect = canvas.getBoundingClientRect()
+}
+
+window.onmousemove = function(e:MouseEvent){
+    window.app.onMouseMove(e.clientX, e.clientY)
+}
+
+window.onmouseup = function(e:MouseEvent){
+    window.app.onMouseUp(e.clientX, e.clientY)
 }

@@ -1,6 +1,6 @@
 import { Vector2 } from "../math/vector2"
 import { Vector4 } from "../math/vector4"
-import { Colors } from "./color"
+import { Color } from "./color"
 import { Vertex } from "./vertex"
 
 export default class Model {
@@ -57,9 +57,9 @@ export default class Model {
             let n3 = normalList[ parseInt(v3s[2]) -1 ]
 
             this.triangles.push([
-                {posModel:v1, color:Colors.WHITE, uv:uv1, normal:n1}, 
-                {posModel:v2, color:Colors.WHITE, uv:uv2, normal:n2}, 
-                {posModel:v3, color:Colors.WHITE, uv:uv3, normal:n3}, 
+                {posModel:v1, color:Color.WHITE, uv:uv1, normal:n1}, 
+                {posModel:v2, color:Color.WHITE, uv:uv2, normal:n2}, 
+                {posModel:v3, color:Color.WHITE, uv:uv3, normal:n3}, 
             ])
         }
     }

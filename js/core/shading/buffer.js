@@ -1,3 +1,4 @@
+var color_1 = require("./color");
 var Buffer = (function () {
     function Buffer(width, height, usingMSAA) {
         this.usingMSAA = true;
@@ -80,7 +81,7 @@ var Buffer = (function () {
             return;
         }
         var pstart = (this.width * y + x) * 4 * 4;
-        var color = { r: 0, g: 0, b: 0, a: 0 };
+        var color = new color_1.Color();
         for (var i = 0; i < 4; i++) {
             var colorStart = pstart + i * 4;
             var r = this.msaaColorBuffer[colorStart];

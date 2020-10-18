@@ -1,23 +1,68 @@
 import MathUtils from "../math/math-utils"
 
-export interface Color {
-    r:number,
-    g:number,
-    b:number,
-    a:number
-}
+export class Color {
+    public r:number
+    public g:number
+    public b:number
+    public a:number
 
-export class Colors {
-    public static BLACK:Color = {r:0, g:0, b:0, a:255}
-    public static WHITE:Color = {r:255, g:255, b:255, a:255}
-    public static RED:Color =  {r:255, g:0, b:0, a:255}
-    public static BLUE:Color =  {r:0, g:0, b:255, a:255}
-    public static GREEN:Color =  {r:0, g:255, b:0, a:255}
-    public static YELLOW:Color =  {r:255, g:255, b:0, a:255}
-    public static GRAY:Color =  {r:100, g:100, b:100, a:255}
+    public static BLACK:Color = new Color(0,0,0,255)
+    public static WHITE:Color = new Color(255,255,255,255)
+    public static RED:Color =  new Color(255,0,0,255)
+    public static BLUE:Color =  new Color(0,0,255,255)
+    public static GREEN:Color =  new Color(0,255,255,255)
+    public static YELLOW:Color =  new Color(255,255,0,255)
+    public static GRAY:Color =  new Color(100,100,100,255)
 
-    public static clone(color:Color):Color{
-        return {r:color.r, g:color.g, b:color.b, a:color.a}
+    public constructor(r:number=0, g:number=0, b:number=0, a:number=0) {
+       this.r = r
+       this.g = g
+       this.b = b
+       this.a = a
+    }
+
+    public set(color:Color) {
+        this.r = color.r
+        this.g = color.g
+        this.b = color.b
+        this.a = color.a
+        return this
+    }
+
+    public clone():Color{
+        return new Color(this.r, this.g, this.b, this.a)
+    }
+
+    public add(value:number){
+        this.r += value
+        this.g += value
+        this.b += value
+        this.a += value
+        this.clamp(0, 255)
+        return this
+    }
+
+    public addRGB(color:Color) {
+        this.r += color.r
+        this.g += color.g
+        this.b += color.b
+        this.clamp(0, 255)
+        return this
+    }
+
+    public multiplyRGB(factor:number){
+        this.r *= factor
+        this.g *= factor
+        this.b *= factor
+        this.clamp(0, 255)
+        return this
+    }
+
+    protected clamp(min:number, max:number) {
+        this.r = MathUtils.clamp(this.r, min, max)
+        this.g = MathUtils.clamp(this.g, min, max)
+        this.b = MathUtils.clamp(this.b, min, max)
+        this.a = MathUtils.clamp(this.a, min, max)
     }
 
     public static getInterpColor(color1:Color, color2:Color, color3:Color, a:number, b:number, c:number, dstColor:Color) {

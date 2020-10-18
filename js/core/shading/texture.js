@@ -8,7 +8,7 @@ var TEXTURE_FILTER_MODE = exports.TEXTURE_FILTER_MODE;
 var Texture = (function () {
     function Texture(width, height) {
         this.data = [];
-        this.tmp = { r: 0, g: 0, b: 0, a: 0 };
+        this.tmp = new color_1.Color();
         this.filterMode = TEXTURE_FILTER_MODE.BILINEAR;
         this.width = width;
         this.height = height;
@@ -21,12 +21,7 @@ var Texture = (function () {
         for (var y = 0; y < height; y++) {
             for (var x = 0; x < width; x++) {
                 var pos = ((height - y - 1) * width + x) * 4;
-                var color = {
-                    r: buffer[pos],
-                    g: buffer[pos + 1],
-                    b: buffer[pos + 2],
-                    a: buffer[pos + 3]
-                };
+                var color = new color_1.Color(buffer[pos], buffer[pos + 1], buffer[pos + 2], buffer[pos + 3]);
                 texture.setPixel(x, y, color);
             }
         }
@@ -92,10 +87,10 @@ var Texture = (function () {
             var w2 = dx * (1 - dy);
             var w3 = (1 - dx) * dy;
             var w4 = dx * dy;
-            color_1.Colors.getBilinearColor(c1, c2, c3, c4, w1, w2, w3, w4, this.tmp);
+            color_1.Color.getBilinearColor(c1, c2, c3, c4, w1, w2, w3, w4, this.tmp);
             return this.tmp;
         }
-        return color_1.Colors.BLACK;
+        return color_1.Color.BLACK;
     };
     return Texture;
 })();

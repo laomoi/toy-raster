@@ -126,7 +126,7 @@ export default class Raster {
         return null
     }
 
-    public drawTriangle2D(v0:Vertex, v1:Vertex, v2:Vertex) {
+    protected drawTriangle2D(v0:Vertex, v1:Vertex, v2:Vertex) {
         //使用重心坐标的算法(barycentric coordinates)对三角形进行光栅化
         //使用AABB来优化性能
         //对于三角形边(edge case)上的点, 使用的是<CG 4th>上的算法， 使用一个Off-screen point(-1, -1) 来判断是否在同一边

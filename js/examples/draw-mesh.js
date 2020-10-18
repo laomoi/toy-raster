@@ -59,7 +59,7 @@ var DrawMesh = (function () {
                 var viewDir = eye.sub(worldPos).normalize();
                 var halfDir = lightDir.add(viewDir).normalize();
                 var specIntense = Math.pow(Math.max(0, n.dot(halfDir)), 5 * specFactor);
-                var factor = diffuseIntense;
+                var factor = diffuseIntense + specIntense;
                 var ambient = 5;
                 fragColor.set(diffuseColor).multiplyRGB(factor).add(ambient);
                 fragColor.a = 255;

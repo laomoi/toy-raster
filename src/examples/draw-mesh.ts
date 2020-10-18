@@ -100,7 +100,7 @@ export default class DrawMesh implements IExample{
                     let halfDir:Vector4 = lightDir.add(viewDir).normalize()
                     let specIntense = Math.pow( Math.max(0, n.dot(halfDir)), 5*specFactor) //*0.8
 
-                    let factor = diffuseIntense //+ specIntense
+                    let factor = diffuseIntense + specIntense
                     let ambient = 5
                     fragColor.set(diffuseColor).multiplyRGB(factor).add(ambient)
                     fragColor.a = 255

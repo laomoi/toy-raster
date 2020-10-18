@@ -1,12 +1,12 @@
 var webgl_blitter_1 = require("./web/webgl-blitter");
 var raster_1 = require("./core/raster");
-var draw_box_1 = require("./examples/draw-box");
+var draw_mesh_1 = require("./examples/draw-mesh");
 var App = (function () {
     function App(canvasWidth, canvasHeight, gl) {
         this.blitter = null;
         this.renderer = new raster_1["default"](canvasWidth, canvasHeight, true);
         this.blitter = new webgl_blitter_1.WebGLBlitter(gl);
-        this.example = new draw_box_1["default"](this.renderer);
+        this.example = new draw_mesh_1["default"](this.renderer);
         var self = this;
         var wrapMainLoop = function () {
             self.mainLoop();

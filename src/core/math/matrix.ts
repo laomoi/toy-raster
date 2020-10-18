@@ -58,6 +58,33 @@ export class Matrix {
         this.m[2][3] = 1
     }
 
+    public setRotateX(angle:number){
+        this.identify()
+        let cos = Math.cos(angle), sin=Math.sin(angle)
+        this.m[1][1] = cos
+        this.m[1][2] = sin
+        this.m[2][1] = -sin
+        this.m[2][2] = cos
+    }
+
+    public setRotateY(angle:number){
+        this.identify()
+        let cos = Math.cos(angle), sin=Math.sin(angle)
+        this.m[0][0] = cos
+        this.m[0][2] = -sin
+        this.m[2][0] = sin
+        this.m[2][2] = cos
+    }
+
+    public setRotateZ(angle:number){
+        this.identify()
+        let cos = Math.cos(angle), sin=Math.sin(angle)
+        this.m[0][0] = cos
+        this.m[0][1] = sin
+        this.m[1][0] = -sin
+        this.m[1][1] = cos
+    }
+
     public setLookAt(eye:Vector4, at:Vector4, up:Vector4) {
         //w is reverse of look at direction, wuv is the axises of the camera, 
         //The equation is from <fundamentals of CG> 4th. 7.1

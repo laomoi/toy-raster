@@ -47,6 +47,30 @@ var Matrix = (function () {
         this.m[3][2] = 2 * f * n / (f - n);
         this.m[2][3] = 1;
     };
+    Matrix.prototype.setRotateX = function (angle) {
+        this.identify();
+        var cos = Math.cos(angle), sin = Math.sin(angle);
+        this.m[1][1] = cos;
+        this.m[1][2] = sin;
+        this.m[2][1] = -sin;
+        this.m[2][2] = cos;
+    };
+    Matrix.prototype.setRotateY = function (angle) {
+        this.identify();
+        var cos = Math.cos(angle), sin = Math.sin(angle);
+        this.m[0][0] = cos;
+        this.m[0][2] = -sin;
+        this.m[2][0] = sin;
+        this.m[2][2] = cos;
+    };
+    Matrix.prototype.setRotateZ = function (angle) {
+        this.identify();
+        var cos = Math.cos(angle), sin = Math.sin(angle);
+        this.m[0][0] = cos;
+        this.m[0][1] = sin;
+        this.m[1][0] = -sin;
+        this.m[1][1] = cos;
+    };
     Matrix.prototype.setLookAt = function (eye, at, up) {
         var w = at.sub(eye).normalize().reverse();
         var u = up.cross(w).normalize();

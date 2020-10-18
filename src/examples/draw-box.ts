@@ -8,26 +8,37 @@ import { IExample } from "../main"
 import { Vector2 } from "../core/math/vector2"
 
 import floorPngBuffer from '../../res/floor_diffuse.png'
+import InputHandler from "../web/input-handler"
+import MathUtils from "../core/math/math-utils"
+import { Matrix } from "../core/math/matrix"
 
 export default class DrawBox implements IExample{
     protected texture:Texture
     protected renderer:Raster
+
+    protected fovy:number = Math.PI / 2
+    protected eye:Vector4 = new Vector4(1.5, 0, 2.5, 1)
+    protected inputHandler:InputHandler
+
     public constructor(renderer:Raster) {
         this.texture = this.createTexture()
         this.renderer = renderer
+        this.inputHandler = new InputHandler(this)
         this.init()
     }
     
-    
-    protected init() {
-        let eye = new Vector4(1.5, 0, 2.5, 1)
+    protected setCamera() {
         let at = new Vector4(0, 0, 0, 1)
         let up = new Vector4(0, 1, 0, 1)
-        let fovy = Math.PI / 2
         let aspect = this.renderer.width / this.renderer.height
         let near = 1
         let far = 500
-        this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
+        this.renderer.setCamera(this.eye, at, up, this.fovy, aspect, near, far)
+    }
+
+    protected init() {
+        this.setCamera()
+
         this.renderer.setBackgroundColor(Color.GRAY)
         let texture = this.texture
         let shader:Shader = new Shader(
@@ -93,5 +104,24 @@ export default class DrawBox implements IExample{
 
     protected createTexture(){
         return Texture.createTextureFromBmpBuffer(floorPngBuffer)
+    }
+
+    public onWheel(delta:number){
+        this.fovy = MathUtils.clamp(this.fovy + (delta >0 ?0.05:-0.05), Math.PI/6, Math.PI*2/3)
+        this.setCamera()
+    }
+
+    public onMove(dx:number, dy:number) {
+        let angleX = -dx/30 * Math.PI/180*10
+        let angleY = -dy/30 * Math.PI/180*10
+
+        let mat1 = new Matrix()
+        mat1.setRotateY(angleX)
+
+        let mat2 = new Matrix()
+        mat2.setRotateX(angleY)
+        this.eye.transform(mat1.multiply(mat2), this.eye)
+
+        this.setCamera()
     }
 }

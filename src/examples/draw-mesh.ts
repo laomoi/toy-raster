@@ -18,7 +18,10 @@ import Model from "../core/shading/model"
 import objBuffer from 'raw-loader!../../res/african_head.obj'
 import diffuseBuffer from '../../res/african_head_diffuse.png'
 import normalBuffer from '../../res/african_head_nm.png'
+// import normalBuffer from '../../res/african_head_nm_tangent.png'
+
 import specBuffer from '../../res/african_head_spec.png'
+import InputHandler from "../web/input-handler"
 
 // import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
 // import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
@@ -32,22 +35,33 @@ export default class DrawMesh implements IExample{
     protected diffuseTexture:Texture
     protected normalTexture:Texture
     protected specTexture:Texture
+    protected usingTangentNormal:boolean=true//normal图是切线空间还是模型空间？
+
+    protected inputHandler:InputHandler
+
+    protected fovy:number = Math.PI / 4
+    protected eye:Vector4 = new Vector4(1, 1, 3, 1)
+    protected modelMatrix = new Matrix()
+  
 
     public constructor(renderer:Raster) {
         this.renderer = renderer
+        this.inputHandler = new InputHandler(this)
+
         this.init()
     }
 
-    
-    protected init() {
-        let eye = new Vector4(1, 1, 3, 1)
+    protected setCamera() {
         let at = new Vector4(0, 0, 0, 1)
         let up = new Vector4(0, 1, 0, 1)
-        let fovy = Math.PI / 4
         let aspect = this.renderer.width / this.renderer.height
         let near = 1
         let far = 500
-        this.renderer.setCamera(eye, at, up, fovy, aspect, near, far)
+        this.renderer.setCamera(this.eye, at, up, this.fovy, aspect, near, far)
+    }
+    
+    protected init() {
+        this.setCamera()
         this.renderer.setBackgroundColor(Color.GRAY)
         this.loadObj()
         this.loadTextures()
@@ -57,9 +71,9 @@ export default class DrawMesh implements IExample{
         let diffuseTexture = this.diffuseTexture
         let normalTexture = this.normalTexture
         let specTexture = this.specTexture
-
-        let modelMatrix = new Matrix()
         let fragColor:Color = new Color()
+        let eye = this.eye
+        let modelMatrix = this.modelMatrix
         let shader:Shader = new Shader(
             {
                 vertexShading: function(vertex:Vertex, input:VertexInput):Vector4{
@@ -71,12 +85,10 @@ export default class DrawMesh implements IExample{
                     return vertex.context.posProject
                 },
                 fragmentShading: function(input:FragmentInput):Color {
-                    //blinn-phong
                     let uv = input.varyingVec2Dict[ShaderVarying.UV]
                     let diffuseColor = diffuseTexture.sample(uv)
                     let normal = normalTexture.sampleAsVector(uv)
                     let specFactor = specTexture.sample(uv).b
-                   
                     let n:Vector4 = normal.normalize()
                     let worldPos:Vector4 = input.varyingVec4Dict[ShaderVarying.WORLD_POS] 
                     
@@ -88,7 +100,7 @@ export default class DrawMesh implements IExample{
                     let halfDir:Vector4 = lightDir.add(viewDir).normalize()
                     let specIntense = Math.pow( Math.max(0, n.dot(halfDir)), 5*specFactor) //*0.8
 
-                    let factor = diffuseIntense + specIntense
+                    let factor = diffuseIntense //+ specIntense
                     let ambient = 5
                     fragColor.set(diffuseColor).multiplyRGB(factor).add(ambient)
                     fragColor.a = 255
@@ -111,10 +123,30 @@ export default class DrawMesh implements IExample{
         
     }
     public draw() :void{
+        // this.modelMatrix = this.modelMatrix.multiply()
         let triangles = this.model.triangles
         for (let triangle of triangles) {
             this.renderer.drawTriangle(triangle)
         }
+    }
+
+    public onWheel(delta:number){
+        this.fovy = MathUtils.clamp(this.fovy + (delta >0 ?0.05:-0.05), Math.PI/6, Math.PI*2/3)
+        this.setCamera()
+    }
+
+    public onMove(dx:number, dy:number) {
+        let angleX = -dx/30 * Math.PI/180*10
+        let angleY = -dy/30 * Math.PI/180*10
+
+        let mat1 = new Matrix()
+        mat1.setRotateY(angleX)
+
+        let mat2 = new Matrix()
+        mat2.setRotateX(angleY)
+        this.eye.transform(mat1.multiply(mat2), this.eye)
+
+        this.setCamera()
     }
 
 }

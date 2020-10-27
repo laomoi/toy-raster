@@ -35,7 +35,7 @@ export default class DrawMesh implements IExample{
     protected diffuseTexture:Texture
     protected normalTexture:Texture
     protected specTexture:Texture
-    protected usingTangentNormal:boolean=true//normal图是切线空间还是模型空间？
+    // protected usingTangentNormal:boolean=true//normal图是切线空间还是模型空间？
 
     protected inputHandler:InputHandler
 

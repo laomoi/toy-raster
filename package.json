@@ -1,15 +1,19 @@
 {
   "name": "raster-toy",
   "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
   "description": "raster-toy",
   "author": "laomoi",
   "license": "CC0-1.0",
   "devDependencies": {
-    "arraybuffer-loader": "^1.0.8",
-    "image-decode": "^1.2.2",
     "tsc": "^1.20150623.0",
-    "webpack": "^4.44.2",
-    "webpack-cli": "^3.3.12",
-    "raw-loader": "^4.0.2"
+    "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "electron": "^11.1.0",
+    "image-decode": "^1.2.2"
   }
 }

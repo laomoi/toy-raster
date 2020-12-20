@@ -1,4 +1,4 @@
-import { IExample } from "../main";
+import { IExample } from "../app";
 
 export default class InputHandler {
     protected example:IExample

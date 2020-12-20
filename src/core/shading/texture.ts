@@ -1,7 +1,9 @@
 import { Vector2 } from "../math/vector2"
 import { Vector4 } from "../math/vector4"
 import { Color } from "./color"
-
+import fs = require("fs")
+import path = require("path")
+let decode = require('image-decode')
 
 export enum TEXTURE_FILTER_MODE {
     NEAREST = 1,
@@ -15,29 +17,17 @@ export default class Texture {
 
     public filterMode:TEXTURE_FILTER_MODE = TEXTURE_FILTER_MODE.BILINEAR
 
-    public static createTextureFromBmpBuffer(bmp:any) {
-        let buffer = this.base64ToArrayBuffer(bmp.data)
-        let width = bmp.width
-        let height = bmp.height
+    public static createTextureFromFile(file:string) {
+        let {data, width, height} = decode(fs.readFileSync(path.join(__dirname, "../../../res/" + file)))
         let texture = new Texture(width, height)
         for (let y=0;y<height;y++) {
             for (let x=0;x<width;x++) {
                 let pos = ((height-y-1)*width + x)*4  //webgl中 v坐标向下，把纹理上下反一下
-                let color:Color = new Color(buffer[pos], buffer[pos+1], buffer[pos+2],buffer[pos+3])
+                let color:Color = new Color(data[pos], data[pos+1], data[pos+2],data[pos+3])
                 texture.setPixel(x, y, color)
             }
         }
         return texture
-    }
-
-    protected static base64ToArrayBuffer(base64:string):Uint8Array {
-        var binary_string = window.atob(base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            bytes[i] = binary_string.charCodeAt(i);
-        }
-        return bytes;
     }
 
     

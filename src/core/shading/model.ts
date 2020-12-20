@@ -3,10 +3,14 @@ import { Vector4 } from "../math/vector4"
 import { Color } from "./color"
 import { Vertex } from "./vertex"
 
+import fs = require("fs")
+import path = require("path")
+
 export default class Model {
     public triangles:Array<Array<Vertex>> = []
 
-    public createFromObjBuffer(objContent:string) {
+    public createFromFile(file:string) {
+        let objContent = fs.readFileSync(path.join(__dirname, "../../../res/" + file), "utf8")
         this.triangles = []
         
         let lines:Array<string> = objContent.split(/\r\n|\n/)

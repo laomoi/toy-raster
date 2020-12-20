@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>toy raster</title>
+
+</head>
+<body>
+<!-- <button id="save" onclick="console.log(window.app)">截图</button> -->
+<canvas id="canvas" width="1024px" height="768px"></canvas>
+
+<div>fps: <span id="fps"></span></div>
+
+<script>
+    let App = require("../build-js/app.js")
+    let app = new App.default()
+    let canvas = document.getElementById('canvas')
+    let gl = canvas.getContext('webgl')
+    if (!gl) {
+        console.log("WEBGL FAILED")
+    } else {
+        let fpsElem = document.getElementById("fps");
+        app.setGL(gl, canvas.clientWidth, canvas.clientHeight)
+        app.setShowFPSCallback(function(fps) {
+            fpsElem.innerText = fps.toFixed(1) + ""
+        })
+        app.run()
+    }
+
+
+    //start spectorjs
+    //var SPECTOR = require("spectorjs");
+    //var spector = new SPECTOR.Spector();
+    //spector.displayUI();
+    
+</script>
+
+</body>
+</html>

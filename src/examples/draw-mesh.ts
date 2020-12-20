@@ -3,7 +3,7 @@ import { Color } from "../core/shading/color"
 import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
-import { IExample } from "../main"
+import { IExample } from "../app"
 import Shader, { VertexInput, FragmentInput, ShaderVarying } from "../core/shading/shader"
 import { Vector2 } from "../core/math/vector2"
 
@@ -15,18 +15,10 @@ import MathUtils from "../core/math/math-utils"
 import Model from "../core/shading/model"
 
 
-import objBuffer from 'raw-loader!../../res/african_head.obj'
-import diffuseBuffer from '../../res/african_head_diffuse.png'
-import normalBuffer from '../../res/african_head_nm.png'
-// import normalBuffer from '../../res/african_head_nm_tangent.png'
 
-import specBuffer from '../../res/african_head_spec.png'
 import InputHandler from "../web/input-handler"
 
-// import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
-// import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
-// import normalBuffer from '../../res/diablo3_pose_nm.png'
-// import specBuffer from '../../res/diablo3_pose_spec.png'
+
 
 export default class DrawMesh implements IExample{
     protected renderer:Raster
@@ -112,16 +104,21 @@ export default class DrawMesh implements IExample{
     }
 
     protected loadTextures() {
-        this.diffuseTexture = Texture.createTextureFromBmpBuffer(diffuseBuffer)
-        this.normalTexture = Texture.createTextureFromBmpBuffer(normalBuffer)
-        this.specTexture = Texture.createTextureFromBmpBuffer(specBuffer)
+        // import normalBuffer from '../../res/african_head_nm_tangent.png'
+        // import objBuffer from 'raw-loader!../../res/diablo3_pose.obj'
+        // import diffuseBuffer from '../../res/diablo3_pose_diffuse.png'
+        // import normalBuffer from '../../res/diablo3_pose_nm.png'
+        // import specBuffer from '../../res/diablo3_pose_spec.png'
+        this.diffuseTexture = Texture.createTextureFromFile("african_head_diffuse.png")
+        this.normalTexture = Texture.createTextureFromFile("african_head_nm.png")
+        this.specTexture = Texture.createTextureFromFile("african_head_spec.png")
     }
 
     protected loadObj() {
         this.model = new Model()
-        this.model.createFromObjBuffer(objBuffer)
-        
+        this.model.createFromFile("african_head.obj")
     }
+
     public draw() :void{
         // this.modelMatrix = this.modelMatrix.multiply()
         let triangles = this.model.triangles

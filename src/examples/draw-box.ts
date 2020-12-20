@@ -4,10 +4,9 @@ import Shader, { FragmentInput, ShaderVarying, VertexInput } from "../core/shadi
 import Texture from "../core/shading/texture"
 import { Vertex } from "../core/shading/vertex"
 import Raster from "../core/raster"
-import { IExample } from "../main"
+import { IExample } from "../app"
 import { Vector2 } from "../core/math/vector2"
 
-import floorPngBuffer from '../../res/floor_diffuse.png'
 import InputHandler from "../web/input-handler"
 import MathUtils from "../core/math/math-utils"
 import { Matrix } from "../core/math/matrix"
@@ -103,7 +102,7 @@ export default class DrawBox implements IExample{
     }
 
     protected createTexture(){
-        return Texture.createTextureFromBmpBuffer(floorPngBuffer)
+        return Texture.createTextureFromFile("floor_diffuse.png")
     }
 
     public onWheel(delta:number){
